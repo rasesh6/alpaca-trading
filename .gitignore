@@ -1,0 +1,11 @@
+# Secrets - NEVER commit these
+.env
+config.py
+*.pyc
+__pycache__/
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
