@@ -5,6 +5,7 @@ A modern web-based trading interface using Alpaca's API.
 Features: Paper/Live trading, positions, orders, exit strategies, WebSocket streaming
 """
 import os
+import sys
 import json
 import logging
 import queue
@@ -15,6 +16,11 @@ from config import SECRET_KEY, USE_PAPER, set_trading_mode
 from alpaca_client import get_client, reinitialize_client
 import streaming
 import market_data_streaming
+
+# Add ml-trading directory to path for ML imports
+ml_trading_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ml-trading')
+if ml_trading_path not in sys.path:
+    sys.path.insert(0, ml_trading_path)
 
 
 def restart_all_connections():
