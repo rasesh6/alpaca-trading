@@ -1318,6 +1318,230 @@ def ml_full(symbol):
     return jsonify(results)
 
 
+@app.route('/api/ml/train-all', methods=['POST'])
+def ml_train_all():
+    """
+    Train models for multiple symbols
+
+    Query params:
+    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    - days: Number of days of history (default: 500)
+    """
+    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    symbols = [s.strip().upper() for s in symbols_str.split(',')]
+    days = int(request.args.get('days', 500))
+
+    logger.info(f"ML Train All request: {symbols}, days={days}")
+
+    results = {
+        'symbols': symbols,
+        'days': days,
+        'timestamp': datetime.now().isoformat(),
+        'results': {}
+    }
+
+    for symbol in symbols:
+        try:
+            from trainer import Trainer
+
+            trainer = Trainer(symbol)
+            trainer.fetch_data(days)
+            trainer.prepare_features()
+            model = trainer.train()
+            trainer.save_model()
+
+            results['results'][symbol] = {
+                'success': True,
+                'train_samples': len(trainer.X_train),
+                'test_samples': len(trainer.X_test)
+            }
+
+        except Exception as e:
+            logger.error(f"Training failed for {symbol}: {e}")
+            results['results'][symbol] = {
+                'success': False,
+                'error': str(e)
+            }
+
+    return jsonify(results)
+
+
+@app.route('/api/ml/signals', methods=['GET'])
+def ml_signals_all():
+    """
+    Get signals for multiple symbols
+
+    Query params:
+    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    """
+    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    symbols = [s.strip().upper() for s in symbols_str.split(',')]
+
+    logger.info(f"ML Signals request: {symbols}")
+
+    results = {
+        'symbols': symbols,
+        'timestamp': datetime.now().isoformat(),
+        'signals': {}
+    }
+
+    for symbol in symbols:
+        try:
+            from signal_generator import SignalGenerator
+
+            generator = SignalGenerator(symbol)
+            signal = generator.get_latest_signal()
+
+            results['signals'][symbol] = {
+                'success': True,
+                'signal': signal.get('signal', 'HOLD'),
+                'confidence': signal.get('confidence', 0),
+                'probabilities': signal.get('probabilities', {})
+            }
+
+        except Exception as e:
+            logger.error(f"Signal failed for {symbol}: {e}")
+            results['signals'][symbol] = {
+                'success': False,
+                'error': str(e)
+            }
+
+    return jsonify(results)
+
+
+@app.route('/api/ml/walk-forward/<symbol>', methods=['POST'])
+def ml_walk_forward(symbol):
+    """
+    Run walk-forward validation for realistic backtest
+
+    Query params:
+    - days: Number of days of history (default: 500)
+    """
+    symbol = symbol.upper()
+    days = int(request.args.get('days', 500))
+
+    logger.info(f"ML Walk-Forward request: {symbol}, days={days}")
+
+    try:
+        from walk_forward import WalkForwardValidator
+        from ib_data_provider import IBDataProviderFallback
+
+        # Fetch data
+        provider = IBDataProviderFallback()
+        df = provider.get_historical_bars(symbol, days)
+
+        if df is None or len(df) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'Could not fetch data',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+
+        # Run validation
+        validator = WalkForwardValidator(symbol, df)
+        results = validator.run_validation()
+
+        return jsonify({
+            'success': True,
+            'symbol': symbol,
+            'folds': results['folds'],
+            'overall': results['overall'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Walk-forward failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/api/ml/auto-trade', methods=['POST'])
+def ml_auto_trade():
+    """
+    Execute trades based on ML signals (paper trading)
+
+    Query params:
+    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    - min_confidence: Minimum confidence to trade (default: 0.7)
+    """
+    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    symbols = [s.strip().upper() for s in symbols_str.split(',')]
+    min_confidence = float(request.args.get('min_confidence', 0.7))
+
+    logger.info(f"ML Auto-Trade request: {symbols}, min_confidence={min_confidence}")
+
+    try:
+        from auto_trader import MLAutoTrader
+
+        trader = MLAutoTrader(paper=True)
+        trader.config['min_confidence'] = min_confidence
+
+        results = trader.run_trading_cycle(symbols)
+
+        return jsonify({
+            'success': True,
+            'symbols': symbols,
+            'min_confidence': min_confidence,
+            'signals': results['signals'],
+            'orders': results['orders'],
+            'errors': results['errors'],
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Auto-trade failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/api/ml/status', methods=['GET'])
+def ml_status():
+    """Get ML trading system status including account info and positions"""
+    try:
+        from auto_trader import MLAutoTrader
+
+        trader = MLAutoTrader(paper=True)
+        account = trader.get_account_info()
+        positions = trader.get_positions()
+
+        # Get signals for held positions
+        signals = {}
+        for symbol in list(positions.keys()) + ['SOXL', 'NVDA', 'SPY', 'QQQ']:
+            if symbol not in signals:
+                try:
+                    from signal_generator import SignalGenerator
+                    gen = SignalGenerator(symbol)
+                    sig = gen.get_latest_signal()
+                    signals[symbol] = {
+                        'signal': sig.get('signal', 'HOLD'),
+                        'confidence': sig.get('confidence', 0)
+                    }
+                except:
+                    pass
+
+        return jsonify({
+            'success': True,
+            'account': account,
+            'positions': positions,
+            'signals': signals,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Status check failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
 # ==================== RUN ====================
 
 if __name__ == '__main__':

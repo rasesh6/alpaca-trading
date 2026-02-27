@@ -1,0 +1,14 @@
+# Railway Monorepo Configuration
+# This file configures multiple services from a single repo
+
+[services.alpaca-web]
+# Main Alpaca web application (existing)
+root = "/"
+startCommand = "gunicorn server:app"
+
+[services.ml-trading]
+# ML Trading System
+root = "/ml-trading"
+dockerfile = "Dockerfile"
+startCommand = "python api_server.py"
+healthcheckPath = "/health"
