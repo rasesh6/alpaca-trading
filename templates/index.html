@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpaca Trading Terminal</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>ALPACA TERMINAL</h1>
+            <div class="header-badges">
+                <div class="mode-toggle-container">
+                    <span class="mode-label {% if paper_mode %}active{% endif %}" id="paper-label">PAPER</span>
+                    <label class="mode-toggle">
+                        <input type="checkbox" id="trading-mode-toggle" {% if not paper_mode %}checked{% endif %} onchange="handleModeToggle()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="mode-label {% if not paper_mode %}active live{% endif %}" id="live-label">LIVE</span>
+                </div>
+                <span class="badge" id="connection-status">Connected</span>
+            </div>
+        </header>
+
+        <!-- Account Info -->
+        <div class="card account-card">
+            <h2>Account</h2>
+            <div class="balance-display" id="account-info">
+                <div class="balance-row">
+                    <span>Cash</span>
+                    <span id="cash">-</span>
+                </div>
+                <div class="balance-row">
+                    <span>Buying Power</span>
+                    <span id="buying-power">-</span>
+                </div>
+                <div class="balance-row">
+                    <span>Portfolio Value</span>
+                    <span id="portfolio-value">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column -->
+            <div class="column">
+                <!-- Quote Card -->
+                <div class="card quote-card">
+                    <h2>Quote <span class="streaming-badge" id="streaming-badge">STREAMING</span></h2>
+                    <div class="quote-input">
+                        <input type="text" id="quote-symbol" placeholder="Enter symbol..." value="">
+                    </div>
+                    <div class="quote-display" id="quote-display" style="display: none;">
+                        <div class="quote-header">
+                            <span class="quote-symbol" id="quote-symbol-display">-</span>
+                            <span class="quote-price" id="quote-last">-</span>
+                        </div>
+                        <div class="quote-details">
+                            <div class="quote-detail">
+                                <span class="label">Bid</span>
+                                <span class="value bid" id="quote-bid">-</span>
+                                <span class="size" id="quote-bid-size">-</span>
+                            </div>
+                            <div class="quote-detail">
+                                <span class="label">Ask</span>
+                                <span class="value ask" id="quote-ask">-</span>
+                                <span class="size" id="quote-ask-size">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Entry Card -->
+                <div class="card">
+                    <h2>Order Entry</h2>
+                    <div class="form-group">
+                        <label>Symbol</label>
+                        <input type="text" id="order-symbol" placeholder="AAPL">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" id="order-quantity" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Side</label>
+                            <select id="order-side" onchange="updateSubmitButton()">
+                                <option value="BUY">BUY</option>
+                                <option value="SELL">SELL</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Order Type</label>
+                        <select id="order-type" onchange="toggleOrderType()">
+                            <option value="MARKET">Market</option>
+                            <option value="LIMIT">Limit</option>
+                        </select>
+                    </div>
+
+                    <div class="limit-section" id="limit-section" style="display: none;">
+                        <div class="form-group">
+                            <label>Limit Price Type</label>
+                            <select id="limit-price-type" onchange="toggleLimitPriceInput()">
+                                <option value="manual">Manual Entry</option>
+                                <option value="bid">Use Bid Price</option>
+                                <option value="ask">Use Ask Price</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="manual-limit-input">
+                            <label>Limit Price ($)</label>
+                            <input type="number" id="limit-price" step="0.01" min="0.01" placeholder="e.g., 65.50">
+                        </div>
+                    </div>
+
+                    <!-- Exit Strategy Section -->
+                    <div class="profit-section">
+                        <div class="profit-header">
+                            <label>Exit Strategy</label>
+                            <select id="exit-strategy" onchange="toggleExitStrategy()">
+                                <option value="none">None</option>
+                                <option value="bracket">Bracket (Immediate TP + SL)</option>
+                                <option value="profit-target">Profit Target</option>
+                                <option value="confirmation-stop">Confirmation Stop Limit</option>
+                                <option value="trailing-stop">Trailing Stop Limit ($)</option>
+                            </select>
+                        </div>
+
+                        <!-- Bracket Order Inputs -->
+                        <div id="bracket-input" class="exit-strategy-input" style="display: none;">
+                            <div class="bracket-subsection">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="subsection-label">Take Profit Offset</label>
+                                        <div class="form-inline">
+                                            <select id="bracket-tp-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="bracket-tp-offset" value="0.50" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="subsection-label">Stop Loss Offset</label>
+                                        <div class="form-inline">
+                                            <select id="bracket-sl-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="bracket-sl-offset" value="0.25" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fill Timeout (s)</label>
+                                    <input type="number" id="bracket-fill-timeout" value="15" min="5" max="60">
+                                </div>
+                            </div>
+                            <p class="strategy-desc" id="bracket-desc">BUY: TP above fill, SL below fill. SELL: TP below fill, SL above fill.</p>
+                        </div>
+
+                        <!-- Profit Target Inputs -->
+                        <div id="profit-target-input" class="exit-strategy-input" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="subsection-label">Profit Offset</label>
+                                    <div class="form-inline">
+                                        <select id="profit-offset-type" onchange="updateProfitLabel()">
+                                            <option value="dollar">$</option>
+                                            <option value="percent">%</option>
+                                        </select>
+                                        <input type="number" id="profit-offset" value="0.10" step="0.01" min="0.01" oninput="updateProfitLabel()">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fill Timeout (s)</label>
+                                    <input type="number" id="pt-fill-timeout" value="15" min="5" max="60">
+                                </div>
+                            </div>
+                            <p class="strategy-desc" id="profit-strategy-desc">On fill, place LIMIT SELL at fill_price + <span class="highlight">$0.50</span>.</p>
+                        </div>
+
+                        <!-- Confirmation Stop Inputs -->
+                        <div id="confirmation-stop-input" class="exit-strategy-input" style="display: none;">
+                            <div class="bracket-subsection">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="subsection-label">Trigger</label>
+                                        <div class="form-inline">
+                                            <select id="cs-trigger-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="cs-trigger-offset" value="0.50" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="subsection-label">Stop</label>
+                                        <div class="form-inline">
+                                            <select id="cs-stop-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="cs-stop-offset" value="0.25" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fill Timeout (s)</label>
+                                    <input type="number" id="cs-fill-timeout" value="15" min="5" max="60">
+                                </div>
+                                <div class="form-group">
+                                    <label>Trigger Timeout (s)</label>
+                                    <input type="number" id="cs-trigger-timeout" value="300" min="30" max="3600">
+                                </div>
+                            </div>
+                            <p class="strategy-desc">Wait for price to rise by trigger amount, then place STOP LIMIT order.</p>
+                        </div>
+
+                        <!-- Trailing Stop Inputs -->
+                        <div id="trailing-stop-input" class="exit-strategy-input" style="display: none;">
+                            <div class="bracket-subsection">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="subsection-label">Trigger</label>
+                                        <div class="form-inline">
+                                            <select id="tsl-trigger-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="tsl-trigger-offset" value="0.50" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="subsection-label">Trail</label>
+                                        <div class="form-inline">
+                                            <select id="tsl-trail-type">
+                                                <option value="dollar">$</option>
+                                                <option value="percent">%</option>
+                                            </select>
+                                            <input type="number" id="tsl-trail-amount" value="0.25" step="0.01" min="0.07">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fill Timeout (s)</label>
+                                    <input type="number" id="tsl-fill-timeout" value="15" min="5" max="60">
+                                </div>
+                                <div class="form-group">
+                                    <label>Trigger Timeout (s)</label>
+                                    <input type="number" id="tsl-trigger-timeout" value="300" min="30" max="3600">
+                                </div>
+                            </div>
+                            <p class="strategy-desc">Wait for trigger, then place TRAILING STOP that follows price up. Min trail: 0.1% of price.</p>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-buy" id="submit-order-btn" onclick="submitOrder()">
+                        BUY
+                    </button>
+                </div>
+
+                <!-- Order Response -->
+                <div class="card response-area" id="order-response" style="display: none;">
+                    <div id="order-response-content"></div>
+                </div>
+
+                <!-- Order Status Card (for monitoring) -->
+                <div class="card" id="order-status-card" style="display: none;">
+                    <h2>Order Status</h2>
+                    <div id="order-status-content"></div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="column">
+                <!-- Positions -->
+                <div class="card flex-grow">
+                    <h2>Positions</h2>
+                    <div class="positions-list" id="positions-list">
+                        <div class="placeholder-text">No positions</div>
+                    </div>
+                </div>
+
+                <!-- Orders -->
+                <div class="card flex-grow">
+                    <h2>Open Orders</h2>
+                    <div class="orders-list" id="orders-list">
+                        <div class="placeholder-text">No open orders</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -5,6 +5,12 @@ config.py
 __pycache__/
 .DS_Store
 
+# MCP trading secrets
+mcp-trading/.env
+mcp-trading/config.json
+mcp-trading/config.live.json
+mcp-trading/.mcp.json
+
 # IDE
 .idea/
 .vscode/
