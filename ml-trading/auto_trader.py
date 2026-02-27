@@ -122,12 +122,22 @@ class MLAutoTrader:
         """
         # Try IB first for NBBO quote (with timeout to avoid blocking)
         def fetch_ib_quote():
+            import asyncio
             try:
+                # Create new event loop for this thread (ib_insync needs it)
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
                 ib_provider = IBDataProviderFallback()
                 return ib_provider.get_realtime_quote(symbol)
             except Exception as e:
                 logger.warning(f"IB quote error for {symbol}: {e}")
                 return None
+            finally:
+                try:
+                    loop.close()
+                except:
+                    pass
 
         try:
             # Run IB fetch in thread pool with 10 second timeout
@@ -203,24 +213,52 @@ class MLAutoTrader:
         logger.info(f"Position size for {symbol}: {shares} shares @ ${price:.2f} = ${shares * price:.2f}")
         return shares
 
-    def place_market_order(self, symbol: str, side: str, qty: int, extended_hours: bool = True) -> Optional[Dict]:
+    def place_market_order(self, symbol: str, side: str, qty: int, extended_hours: bool = True, limit_price: float = None) -> Optional[Dict]:
         """
-        Place a market order
+        Place a market order (or limit order for extended hours)
 
         Args:
             symbol: Stock symbol
             side: 'BUY' or 'SELL'
             qty: Number of shares
             extended_hours: Enable pre-market/after-hours trading (default: True)
+            limit_price: Limit price (required for extended hours, uses ask/bid if not provided)
         """
         try:
-            order_data = MarketOrderRequest(
-                symbol=symbol,
-                qty=qty,
-                side=OrderSide.BUY if side.upper() == 'BUY' else OrderSide.SELL,
-                time_in_force=TimeInForce.DAY,
-                extended_hours=extended_hours  # Enable extended hours trading
-            )
+            # Extended hours requires LIMIT orders, not MARKET orders
+            if extended_hours:
+                if not limit_price:
+                    # Get current quote for limit price
+                    quote = self.get_latest_price(symbol)
+                    if quote:
+                        # For BUY, use slightly above ask. For SELL, use slightly below bid
+                        if side.upper() == 'BUY':
+                            limit_price = quote * 1.001  # 0.1% above mid
+                        else:
+                            limit_price = quote * 0.999  # 0.1% below mid
+                        limit_price = round(limit_price, 2)
+                    else:
+                        logger.error(f"Cannot place extended hours order for {symbol}: no price available")
+                        return None
+
+                logger.info(f"{symbol}: Using LIMIT order for extended hours @ ${limit_price:.2f}")
+
+                order_data = LimitOrderRequest(
+                    symbol=symbol,
+                    qty=qty,
+                    side=OrderSide.BUY if side.upper() == 'BUY' else OrderSide.SELL,
+                    time_in_force=TimeInForce.DAY,
+                    limit_price=limit_price,
+                    extended_hours=True
+                )
+            else:
+                order_data = MarketOrderRequest(
+                    symbol=symbol,
+                    qty=qty,
+                    side=OrderSide.BUY if side.upper() == 'BUY' else OrderSide.SELL,
+                    time_in_force=TimeInForce.DAY,
+                    extended_hours=False
+                )
 
             order = self.trading_client.submit_order(order_data)
 
@@ -232,6 +270,7 @@ class MLAutoTrader:
                 'side': side,
                 'qty': qty,
                 'extended_hours': extended_hours,
+                'limit_price': limit_price,
                 'status': order.status,
                 'created_at': order.created_at.isoformat() if order.created_at else None
             }
