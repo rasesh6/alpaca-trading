@@ -25,12 +25,22 @@ class IBDataProvider:
     - Real-time NBBO quotes for trading
 
     Configuration via environment variables:
-    - IB_GATEWAY_HOST: IB Gateway host (default: ib-gateway-production.up.railway.app)
+    - IB_GATEWAY_HOST: IB Gateway host (default: ib-gateway.railway.internal for Railway)
     - IB_GATEWAY_PORT: IB Gateway port (default: 4001)
     """
 
+    # Common port configurations
+    PORTS = {
+        'railway_private': 4001,    # Railway private networking
+        'railway_socat': 4003,      # Railway exposes via socat
+        'local_live': 4001,         # Local live trading
+        'local_paper': 4002,        # Local paper trading
+    }
+
     def __init__(self, host: str = None, port: int = None):
-        self.host = host or os.getenv('IB_GATEWAY_HOST', 'ib-gateway-production.up.railway.app')
+        # Default to Railway private networking if not specified
+        self.host = host or os.getenv('IB_GATEWAY_HOST', 'ib-gateway.railway.internal')
+        # Default to 4001 (direct API port)
         self.port = port or int(os.getenv('IB_GATEWAY_PORT', '4001'))
         self.ib = None
         self._connected = False
@@ -43,22 +53,51 @@ class IBDataProvider:
             logger.info(f"Connecting to IB Gateway at {self.host}:{self.port}...")
 
             self.ib = IB()
-            self.ib.connect(
-                self.host,
-                self.port,
-                clientId=15,  # Unique client ID for ML trading
-                timeout=30
-            )
 
-            self._connected = True
-            logger.info("Connected to IB Gateway successfully")
-            return True
+            # Try connecting with increasing timeout
+            for timeout in [15, 30, 60]:
+                try:
+                    self.ib.connect(
+                        self.host,
+                        self.port,
+                        clientId=15,  # Unique client ID for ML trading
+                        timeout=timeout
+                    )
+                    self._connected = True
+                    logger.info(f"Connected to IB Gateway successfully (timeout={timeout}s)")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Connection attempt with timeout={timeout}s failed: {e}")
+                    if timeout == 60:
+                        raise
 
         except ImportError:
             logger.error("ib_insync not installed. Run: pip install ib_insync")
             return False
         except Exception as e:
             logger.error(f"Failed to connect to IB Gateway: {e}")
+
+            # Try alternative ports
+            alt_ports = [4003, 4001, 4002] if self.port not in [4003, 4001, 4002] else []
+            for alt_port in alt_ports:
+                if alt_port == self.port:
+                    continue
+                logger.info(f"Trying alternative port {alt_port}...")
+                try:
+                    self.ib = IB()
+                    self.ib.connect(
+                        self.host,
+                        alt_port,
+                        clientId=15,
+                        timeout=30
+                    )
+                    self.port = alt_port
+                    self._connected = True
+                    logger.info(f"Connected to IB Gateway on alternative port {alt_port}")
+                    return True
+                except Exception as e2:
+                    logger.warning(f"Port {alt_port} failed: {e2}")
+
             return False
 
     def disconnect(self):

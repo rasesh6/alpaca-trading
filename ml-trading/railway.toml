@@ -1,0 +1,17 @@
+# ML Trading System - Railway Configuration
+# Deploy with: railway up
+
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+startCommand = "python api_server.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Environment variables (set in Railway dashboard)
+# IB_GATEWAY_HOST=ib-gateway.railway.internal
+# IB_GATEWAY_PORT=4001
+# PORT=3000
