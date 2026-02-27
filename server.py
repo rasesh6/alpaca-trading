@@ -1380,6 +1380,8 @@ def ml_signals_all():
     Query params:
     - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
     """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
     symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
     symbols = [s.strip().upper() for s in symbols_str.split(',')]
 
@@ -1391,26 +1393,58 @@ def ml_signals_all():
         'signals': {}
     }
 
-    for symbol in symbols:
+    def get_signal_with_timeout(symbol):
+        """Get signal for a single symbol with timeout"""
         try:
             from signal_generator import SignalGenerator
 
             generator = SignalGenerator(symbol)
             signal = generator.get_latest_signal()
 
-            results['signals'][symbol] = {
+            return {
+                'symbol': symbol,
                 'success': True,
                 'signal': signal.get('signal', 'HOLD'),
                 'confidence': signal.get('confidence', 0),
                 'probabilities': signal.get('probabilities', {})
             }
-
         except Exception as e:
             logger.error(f"Signal failed for {symbol}: {e}")
-            results['signals'][symbol] = {
+            return {
+                'symbol': symbol,
                 'success': False,
                 'error': str(e)
             }
+
+    # Use thread pool to avoid blocking on IB operations
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {executor.submit(get_signal_with_timeout, symbol): symbol for symbol in symbols}
+
+        for future in futures:
+            symbol = futures[future]
+            try:
+                # 15 second timeout per symbol
+                result = future.result(timeout=15)
+                results['signals'][symbol] = {
+                    'success': result['success'],
+                    'signal': result.get('signal', 'HOLD'),
+                    'confidence': result.get('confidence', 0),
+                    'probabilities': result.get('probabilities', {})
+                }
+                if not result['success']:
+                    results['signals'][symbol]['error'] = result.get('error', 'Unknown error')
+            except FuturesTimeoutError:
+                logger.error(f"Signal timed out for {symbol}")
+                results['signals'][symbol] = {
+                    'success': False,
+                    'error': 'Timeout fetching signal'
+                }
+            except Exception as e:
+                logger.error(f"Signal failed for {symbol}: {e}")
+                results['signals'][symbol] = {
+                    'success': False,
+                    'error': str(e)
+                }
 
     return jsonify(results)
 
