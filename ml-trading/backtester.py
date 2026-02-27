@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import alpaca_trade_api as alpaca
-from config import PAPER_API_KEY, PAPER_SECRET_KEY, PAPER_BASE_URL, DATA_DIR
+from ml_config import PAPER_API_KEY, PAPER_SECRET_KEY, PAPER_BASE_URL, DATA_DIR
 from feature_engineering import FeatureEngineer
 from ensemble_model import EnsembleModel
 from signal_generator import SignalGenerator

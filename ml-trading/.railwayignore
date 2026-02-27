@@ -1,0 +1,6 @@
+# Railway ignore file for ML Trading service
+# Ignore everything except ml-trading directory
+
+/*
+!/ml-trading/
+!/ml-trading/**

@@ -8,7 +8,7 @@ import joblib
 import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
-from config import ENSEMBLE_CONFIG, MODELS_DIR
+from ml_config import ENSEMBLE_CONFIG, MODELS_DIR
 
 
 class EnsembleModel:

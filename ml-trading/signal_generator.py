@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from feature_engineering import FeatureEngineer
 from ensemble_model import EnsembleModel
-from config import SIGNAL_CONFIG, MODELS_DIR
+from ml_config import SIGNAL_CONFIG, MODELS_DIR
 
 # Try to import IB data provider
 try:
@@ -156,7 +156,7 @@ class SignalGenerator:
             # Fallback to Alpaca
             try:
                 import alpaca_trade_api as alpaca
-                from config import PAPER_API_KEY, PAPER_SECRET_KEY, PAPER_BASE_URL
+                from ml_config import PAPER_API_KEY, PAPER_SECRET_KEY, PAPER_BASE_URL
 
                 api = alpaca.REST(
                     key_id=PAPER_API_KEY,

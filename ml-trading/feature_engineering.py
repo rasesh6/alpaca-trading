@@ -4,7 +4,7 @@ Generates technical indicators and features from price data
 """
 import numpy as np
 import pandas as pd
-from config import FEATURE_CONFIG
+from ml_config import FEATURE_CONFIG
 
 
 class FeatureEngineer:
