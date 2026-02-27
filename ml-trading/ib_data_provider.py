@@ -44,11 +44,28 @@ class IBDataProvider:
         self.port = port or int(os.getenv('IB_GATEWAY_PORT', '4001'))
         self.ib = None
         self._connected = False
+        self._event_loop = None
+
+    def _ensure_event_loop(self):
+        """Ensure an asyncio event loop exists for ib_insync"""
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop, create one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        self._event_loop = loop
+        return loop
 
     def connect(self) -> bool:
         """Connect to IB Gateway"""
         try:
             from ib_insync import IB
+            import asyncio
+
+            # Ensure event loop exists (required for ib_insync in threads)
+            self._ensure_event_loop()
 
             logger.info(f"Connecting to IB Gateway at {self.host}:{self.port}...")
 
