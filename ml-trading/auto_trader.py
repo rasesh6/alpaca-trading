@@ -224,12 +224,28 @@ class MLAutoTrader:
 
     def place_bracket_order(self, symbol: str, side: str, qty: int,
                             stop_loss_pct: float = None,
-                            take_profit_pct: float = None) -> Optional[Dict]:
-        """Place a bracket order with stop loss and take profit"""
+                            take_profit_pct: float = None,
+                            entry_price: float = None) -> Optional[Dict]:
+        """
+        Place a bracket order with stop loss and take profit
+
+        Args:
+            symbol: Stock symbol
+            side: 'BUY' or 'SELL'
+            qty: Number of shares
+            stop_loss_pct: Stop loss percentage (default from config)
+            take_profit_pct: Take profit percentage (default from config)
+            entry_price: Entry price (if already known, skips price fetch)
+        """
         try:
-            price = self.get_latest_price(symbol)
-            if not price:
-                raise ValueError(f"Could not get price for {symbol}")
+            # Use provided price or fetch new one
+            if entry_price:
+                price = entry_price
+                logger.info(f"{symbol}: Using provided entry price ${price:.2f}")
+            else:
+                price = self.get_latest_price(symbol)
+                if not price:
+                    raise ValueError(f"Could not get price for {symbol}")
 
             stop_loss_pct = stop_loss_pct or self.config['stop_loss_pct']
             take_profit_pct = take_profit_pct or self.config['take_profit_pct']
@@ -242,17 +258,23 @@ class MLAutoTrader:
                 stop_price = price * (1 + stop_loss_pct)
                 take_profit_price = price * (1 - take_profit_pct)
 
-            # For now, just place market order (bracket orders need more complex handling)
+            logger.info(f"{symbol}: Placing {side} order for {qty} shares @ ${price:.2f}")
+            logger.info(f"{symbol}: Bracket targets - SL=${stop_price:.2f}, TP=${take_profit_price:.2f}")
+
+            # Place market order
             order = self.place_market_order(symbol, side, qty)
 
             if order:
+                order['entry_price'] = price
                 order['stop_loss_price'] = round(stop_price, 2)
                 order['take_profit_price'] = round(take_profit_price, 2)
-                logger.info(f"Bracket order: entry=${price:.2f}, SL=${stop_price:.2f}, TP=${take_profit_price:.2f}")
+                logger.info(f"{symbol}: Order placed successfully - Order ID: {order['order_id']}")
+            else:
+                logger.error(f"{symbol}: Order placement returned None")
 
             return order
         except Exception as e:
-            logger.error(f"Error placing bracket order: {e}")
+            logger.error(f"Error placing bracket order for {symbol}: {e}")
             return None
 
     def execute_signal(self, symbol: str, signal: Dict) -> Optional[Dict]:
@@ -302,7 +324,7 @@ class MLAutoTrader:
 
             qty = self.calculate_position_size(symbol, price)
             logger.info(f"{symbol}: Opening LONG position with BUY (confidence: {confidence:.1%})")
-            return self.place_bracket_order(symbol, 'BUY', qty)
+            return self.place_bracket_order(symbol, 'BUY', qty, entry_price=price)
 
         elif trade_signal == 'SELL':
             if has_long:
@@ -328,7 +350,7 @@ class MLAutoTrader:
 
             qty = self.calculate_position_size(symbol, price)
             logger.info(f"{symbol}: Opening SHORT position with SELL (confidence: {confidence:.1%})")
-            return self.place_bracket_order(symbol, 'SELL', qty)
+            return self.place_bracket_order(symbol, 'SELL', qty, entry_price=price)
 
         else:
             logger.info(f"{symbol}: HOLD signal, no action")
