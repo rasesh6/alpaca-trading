@@ -8,6 +8,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 # Add paths
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,6 +31,9 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Thread pool for IB operations (to avoid blocking)
+_ib_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='ib_')
 
 
 class MLAutoTrader:
@@ -114,10 +118,19 @@ class MLAutoTrader:
 
         Returns mid-price for market orders, or ask/bid for specific sides.
         """
-        # Try IB first for NBBO quote
+        # Try IB first for NBBO quote (with timeout to avoid blocking)
+        def fetch_ib_quote():
+            try:
+                ib_provider = IBDataProviderFallback()
+                return ib_provider.get_realtime_quote(symbol)
+            except Exception as e:
+                logger.warning(f"IB quote error for {symbol}: {e}")
+                return None
+
         try:
-            ib_provider = IBDataProviderFallback()
-            quote = ib_provider.get_realtime_quote(symbol)
+            # Run IB fetch in thread pool with 10 second timeout
+            future = _ib_executor.submit(fetch_ib_quote)
+            quote = future.result(timeout=10)
 
             if quote:
                 # Use mid-price for fair execution estimate
@@ -128,6 +141,8 @@ class MLAutoTrader:
                     return quote['ask']
                 elif quote.get('last'):
                     return quote['last']
+        except FuturesTimeoutError:
+            logger.warning(f"IB quote timed out for {symbol}, falling back to Alpaca")
         except Exception as e:
             logger.warning(f"IB quote failed for {symbol}: {e}, falling back to Alpaca")
 
