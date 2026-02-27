@@ -111,14 +111,14 @@ class MLAutoTrader:
             'unrealized_plpc': float(p.unrealized_plpc)
         } for p in positions}
 
-    def get_latest_price(self, symbol: str) -> Optional[float]:
+    def get_latest_price(self, symbol: str) -> Optional[Dict]:
         """
-        Get latest NBBO price for a symbol from IB
+        Get latest NBBO quote for a symbol from IB
 
         Uses IB Gateway for real-time NBBO quotes (better than Alpaca free tier).
         Falls back to Alpaca if IB is unavailable.
 
-        Returns mid-price for market orders, or ask/bid for specific sides.
+        Returns dict with bid, ask, mid prices.
         """
         # Try IB first for NBBO quote (with timeout to avoid blocking)
         def fetch_ib_quote():
@@ -144,15 +144,14 @@ class MLAutoTrader:
             future = _ib_executor.submit(fetch_ib_quote)
             quote = future.result(timeout=10)
 
-            if quote:
-                # Use mid-price for fair execution estimate
-                if quote.get('mid'):
-                    logger.info(f"{symbol}: IB NBBO mid={quote['mid']:.2f} (bid={quote.get('bid')}, ask={quote.get('ask')})")
-                    return quote['mid']
-                elif quote.get('ask'):
-                    return quote['ask']
-                elif quote.get('last'):
-                    return quote['last']
+            if quote and (quote.get('bid') or quote.get('ask')):
+                logger.info(f"{symbol}: IB NBBO bid={quote.get('bid')}, ask={quote.get('ask')}")
+                return {
+                    'bid': quote.get('bid'),
+                    'ask': quote.get('ask'),
+                    'mid': quote.get('mid'),
+                    'source': 'IB'
+                }
         except FuturesTimeoutError:
             logger.warning(f"IB quote timed out for {symbol}, falling back to Alpaca")
         except Exception as e:
@@ -163,13 +162,42 @@ class MLAutoTrader:
             request = StockLatestQuoteRequest(symbol_or_symbols=symbol)
             quote = self.data_client.get_stock_latest_quote(request)
             if symbol in quote:
-                price = float(quote[symbol].ask_price)
-                logger.info(f"{symbol}: Alpaca quote ask={price:.2f}")
-                return price
+                bid = float(quote[symbol].bid_price)
+                ask = float(quote[symbol].ask_price)
+                mid = (bid + ask) / 2 if bid and ask else ask
+                logger.info(f"{symbol}: Alpaca quote bid={bid:.2f}, ask={ask:.2f}")
+                return {
+                    'bid': bid,
+                    'ask': ask,
+                    'mid': mid,
+                    'source': 'Alpaca'
+                }
         except Exception as e:
             logger.error(f"Error getting price for {symbol}: {e}")
 
         return None
+
+    def get_limit_price_for_side(self, symbol: str, side: str) -> Optional[float]:
+        """
+        Get appropriate limit price for order side
+
+        - BUY orders: Use ASK price (price we'd pay to buy)
+        - SELL orders: Use BID price (price we'd receive to sell)
+        """
+        quote = self.get_latest_price(symbol)
+        if not quote:
+            return None
+
+        if side.upper() == 'BUY':
+            # Buy at ask price
+            price = quote.get('ask') or quote.get('mid')
+            logger.info(f"{symbol}: BUY limit price = ${price:.2f} (ask)")
+        else:
+            # Sell at bid price
+            price = quote.get('bid') or quote.get('mid')
+            logger.info(f"{symbol}: SELL limit price = ${price:.2f} (bid)")
+
+        return price
 
     def get_ml_signal(self, symbol: str) -> Optional[Dict]:
         """
@@ -222,24 +250,18 @@ class MLAutoTrader:
             side: 'BUY' or 'SELL'
             qty: Number of shares
             extended_hours: Enable pre-market/after-hours trading (default: True)
-            limit_price: Limit price (required for extended hours, uses ask/bid if not provided)
+            limit_price: Limit price (if not provided, uses NBBO bid/ask)
         """
         try:
             # Extended hours requires LIMIT orders, not MARKET orders
             if extended_hours:
                 if not limit_price:
-                    # Get current quote for limit price
-                    quote = self.get_latest_price(symbol)
-                    if quote:
-                        # For BUY, use slightly above ask. For SELL, use slightly below bid
-                        if side.upper() == 'BUY':
-                            limit_price = quote * 1.001  # 0.1% above mid
-                        else:
-                            limit_price = quote * 0.999  # 0.1% below mid
-                        limit_price = round(limit_price, 2)
-                    else:
+                    # Get appropriate limit price based on side
+                    limit_price = self.get_limit_price_for_side(symbol, side)
+                    if not limit_price:
                         logger.error(f"Cannot place extended hours order for {symbol}: no price available")
                         return None
+                    limit_price = round(limit_price, 2)
 
                 logger.info(f"{symbol}: Using LIMIT order for extended hours @ ${limit_price:.2f}")
 
@@ -294,12 +316,12 @@ class MLAutoTrader:
             entry_price: Entry price (if already known, skips price fetch)
         """
         try:
-            # Use provided price or fetch new one
+            # Use provided price or get from NBBO
             if entry_price:
                 price = entry_price
                 logger.info(f"{symbol}: Using provided entry price ${price:.2f}")
             else:
-                price = self.get_latest_price(symbol)
+                price = self.get_limit_price_for_side(symbol, side)
                 if not price:
                     raise ValueError(f"Could not get price for {symbol}")
 
@@ -317,8 +339,8 @@ class MLAutoTrader:
             logger.info(f"{symbol}: Placing {side} order for {qty} shares @ ${price:.2f}")
             logger.info(f"{symbol}: Bracket targets - SL=${stop_price:.2f}, TP=${take_profit_price:.2f}")
 
-            # Place market order
-            order = self.place_market_order(symbol, side, qty)
+            # Place market order with limit price for extended hours
+            order = self.place_market_order(symbol, side, qty, limit_price=price)
 
             if order:
                 order['entry_price'] = price
@@ -373,8 +395,8 @@ class MLAutoTrader:
                 logger.info(f"{symbol}: Max positions ({self.config['max_positions']}) reached")
                 return None
 
-            # Open new long position
-            price = self.get_latest_price(symbol)
+            # Open new long position - get ask price for BUY
+            price = self.get_limit_price_for_side(symbol, 'BUY')
             if not price:
                 return None
 
@@ -399,8 +421,8 @@ class MLAutoTrader:
                 logger.info(f"{symbol}: Max positions ({self.config['max_positions']}) reached")
                 return None
 
-            # Open new short position
-            price = self.get_latest_price(symbol)
+            # Open new short position - get bid price for SELL
+            price = self.get_limit_price_for_side(symbol, 'SELL')
             if not price:
                 return None
 
