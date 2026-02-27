@@ -21,14 +21,16 @@ from alpaca.data.historical.stock import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest
 from ib_data_provider import IBDataProviderFallback
 
-# Configure logging
+# Configure logging (file handler only if not on Railway)
+handlers = [logging.StreamHandler()]
+# Don't use file handler on Railway (read-only filesystem)
+if not os.getenv('RAILWAY_ENVIRONMENT'):
+    handlers.append(logging.FileHandler('ml_auto_trader.log'))
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('ml_auto_trader.log')
-    ]
+    handlers=handlers
 )
 logger = logging.getLogger(__name__)
 

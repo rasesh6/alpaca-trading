@@ -1507,19 +1507,31 @@ def ml_auto_trade():
     - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
     - min_confidence: Minimum confidence to trade (default: 0.7)
     """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
     symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
     symbols = [s.strip().upper() for s in symbols_str.split(',')]
     min_confidence = float(request.args.get('min_confidence', 0.7))
 
     logger.info(f"ML Auto-Trade request: {symbols}, min_confidence={min_confidence}")
 
+    def run_trading():
+        try:
+            from auto_trader import MLAutoTrader
+
+            trader = MLAutoTrader(paper=True)
+            trader.config['min_confidence'] = min_confidence
+
+            return trader.run_trading_cycle(symbols)
+        except Exception as e:
+            logger.error(f"Auto-trade internal error: {e}")
+            raise
+
     try:
-        from auto_trader import MLAutoTrader
-
-        trader = MLAutoTrader(paper=True)
-        trader.config['min_confidence'] = min_confidence
-
-        results = trader.run_trading_cycle(symbols)
+        # Run trading in thread pool with 60 second timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_trading)
+            results = future.result(timeout=60)
 
         return jsonify({
             'success': True,
@@ -1531,6 +1543,13 @@ def ml_auto_trade():
             'timestamp': datetime.now().isoformat()
         })
 
+    except FuturesTimeoutError:
+        logger.error("Auto-trade timed out")
+        return jsonify({
+            'success': False,
+            'error': 'Auto-trade timed out (60s limit)',
+            'timestamp': datetime.now().isoformat()
+        }), 504
     except Exception as e:
         logger.error(f"Auto-trade failed: {e}")
         return jsonify({
