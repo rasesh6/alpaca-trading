@@ -217,7 +217,13 @@ class MLAutoTrader:
             return None
 
     def execute_signal(self, symbol: str, signal: Dict) -> Optional[Dict]:
-        """Execute a trade based on ML signal"""
+        """
+        Execute a trade based on ML signal
+
+        Supports both long and short positions:
+        - BUY signal: Close short OR open long
+        - SELL signal: Close long OR open short
+        """
         trade_signal = signal.get('signal', 'HOLD')
         confidence = signal.get('confidence', 0)
 
@@ -226,12 +232,23 @@ class MLAutoTrader:
             logger.info(f"{symbol}: Confidence {confidence:.1%} below threshold {self.config['min_confidence']:.1%}")
             return None
 
-        # Check if we already have a position
+        # Check current positions
         positions = self.get_positions()
 
+        # Check for existing position (long or short)
+        has_long = symbol in positions and float(positions[symbol]['qty']) > 0
+        has_short = symbol in positions and float(positions[symbol]['qty']) < 0
+
         if trade_signal == 'BUY':
-            if symbol in positions:
-                logger.info(f"{symbol}: Already have position, skipping BUY")
+            if has_short:
+                # Close short position (buy to cover)
+                position = positions[symbol]
+                qty = abs(int(float(position['qty'])))
+                logger.info(f"{symbol}: Closing SHORT position with BUY (confidence: {confidence:.1%})")
+                return self.place_market_order(symbol, 'BUY', qty)
+
+            if has_long:
+                logger.info(f"{symbol}: Already have LONG position, skipping BUY")
                 return None
 
             # Check max positions
@@ -239,28 +256,40 @@ class MLAutoTrader:
                 logger.info(f"{symbol}: Max positions ({self.config['max_positions']}) reached")
                 return None
 
-            # Get price and calculate position size
+            # Open new long position
             price = self.get_latest_price(symbol)
             if not price:
                 return None
 
             qty = self.calculate_position_size(symbol, price)
-
-            # Place order
-            logger.info(f"{symbol}: Executing BUY signal (confidence: {confidence:.1%})")
+            logger.info(f"{symbol}: Opening LONG position with BUY (confidence: {confidence:.1%})")
             return self.place_bracket_order(symbol, 'BUY', qty)
 
         elif trade_signal == 'SELL':
-            if symbol not in positions:
-                logger.info(f"{symbol}: No position to SELL")
+            if has_long:
+                # Close long position (sell to close)
+                position = positions[symbol]
+                qty = int(float(position['qty']))
+                logger.info(f"{symbol}: Closing LONG position with SELL (confidence: {confidence:.1%})")
+                return self.place_market_order(symbol, 'SELL', qty)
+
+            if has_short:
+                logger.info(f"{symbol}: Already have SHORT position, skipping SELL")
                 return None
 
-            # Close position
-            position = positions[symbol]
-            qty = int(position['qty'])
+            # Check max positions
+            if len(positions) >= self.config['max_positions']:
+                logger.info(f"{symbol}: Max positions ({self.config['max_positions']}) reached")
+                return None
 
-            logger.info(f"{symbol}: Executing SELL signal (confidence: {confidence:.1%})")
-            return self.place_market_order(symbol, 'SELL', qty)
+            # Open new short position
+            price = self.get_latest_price(symbol)
+            if not price:
+                return None
+
+            qty = self.calculate_position_size(symbol, price)
+            logger.info(f"{symbol}: Opening SHORT position with SELL (confidence: {confidence:.1%})")
+            return self.place_bracket_order(symbol, 'SELL', qty)
 
         else:
             logger.info(f"{symbol}: HOLD signal, no action")
