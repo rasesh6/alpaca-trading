@@ -18,6 +18,7 @@ from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.data.historical.stock import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestQuoteRequest
+from ib_data_provider import IBDataProviderFallback
 
 # Configure logging
 logging.basicConfig(
@@ -105,14 +106,42 @@ class MLAutoTrader:
         } for p in positions}
 
     def get_latest_price(self, symbol: str) -> Optional[float]:
-        """Get latest price for a symbol"""
+        """
+        Get latest NBBO price for a symbol from IB
+
+        Uses IB Gateway for real-time NBBO quotes (better than Alpaca free tier).
+        Falls back to Alpaca if IB is unavailable.
+
+        Returns mid-price for market orders, or ask/bid for specific sides.
+        """
+        # Try IB first for NBBO quote
+        try:
+            ib_provider = IBDataProviderFallback()
+            quote = ib_provider.get_realtime_quote(symbol)
+
+            if quote:
+                # Use mid-price for fair execution estimate
+                if quote.get('mid'):
+                    logger.info(f"{symbol}: IB NBBO mid={quote['mid']:.2f} (bid={quote.get('bid')}, ask={quote.get('ask')})")
+                    return quote['mid']
+                elif quote.get('ask'):
+                    return quote['ask']
+                elif quote.get('last'):
+                    return quote['last']
+        except Exception as e:
+            logger.warning(f"IB quote failed for {symbol}: {e}, falling back to Alpaca")
+
+        # Fallback to Alpaca
         try:
             request = StockLatestQuoteRequest(symbol_or_symbols=symbol)
             quote = self.data_client.get_stock_latest_quote(request)
             if symbol in quote:
-                return float(quote[symbol].ask_price)
+                price = float(quote[symbol].ask_price)
+                logger.info(f"{symbol}: Alpaca quote ask={price:.2f}")
+                return price
         except Exception as e:
             logger.error(f"Error getting price for {symbol}: {e}")
+
         return None
 
     def get_ml_signal(self, symbol: str) -> Optional[Dict]:
@@ -157,25 +186,35 @@ class MLAutoTrader:
         logger.info(f"Position size for {symbol}: {shares} shares @ ${price:.2f} = ${shares * price:.2f}")
         return shares
 
-    def place_market_order(self, symbol: str, side: str, qty: int) -> Optional[Dict]:
-        """Place a market order"""
+    def place_market_order(self, symbol: str, side: str, qty: int, extended_hours: bool = True) -> Optional[Dict]:
+        """
+        Place a market order
+
+        Args:
+            symbol: Stock symbol
+            side: 'BUY' or 'SELL'
+            qty: Number of shares
+            extended_hours: Enable pre-market/after-hours trading (default: True)
+        """
         try:
             order_data = MarketOrderRequest(
                 symbol=symbol,
                 qty=qty,
                 side=OrderSide.BUY if side.upper() == 'BUY' else OrderSide.SELL,
-                time_in_force=TimeInForce.DAY
+                time_in_force=TimeInForce.DAY,
+                extended_hours=extended_hours  # Enable extended hours trading
             )
 
             order = self.trading_client.submit_order(order_data)
 
-            logger.info(f"Placed {side} order for {qty} {symbol} - Order ID: {order.id}")
+            logger.info(f"Placed {side} order for {qty} {symbol} (extended_hours={extended_hours}) - Order ID: {order.id}")
 
             return {
                 'order_id': str(order.id),
                 'symbol': symbol,
                 'side': side,
                 'qty': qty,
+                'extended_hours': extended_hours,
                 'status': order.status,
                 'created_at': order.created_at.isoformat() if order.created_at else None
             }
