@@ -1396,6 +1396,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Setup auto-streaming for quotes
     setupAutoStreaming();
 
+    // Load ML signals
+    refreshMLSignals();
+
     document.getElementById('order-side').addEventListener('change', updateSubmitButton);
     document.getElementById('profit-offset-type').addEventListener('change', updateProfitLabel);
     document.getElementById('profit-offset').addEventListener('input', updateProfitLabel);
@@ -1407,8 +1410,118 @@ document.addEventListener('DOMContentLoaded', () => {
         loadOrders();
     }, 30000);
 
+    // Refresh ML signals every 5 minutes
+    setInterval(refreshMLSignals, 300000);
+
     // Enter key for quote
     document.getElementById('quote-symbol').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') getQuote();
     });
 });
+
+// ==================== ML TRADING FUNCTIONS ====================
+
+let mlSignals = {};
+let mlConfidence = 0.70;
+
+function updateMLConfidence() {
+    const slider = document.getElementById('ml-confidence');
+    mlConfidence = slider.value / 100;
+    document.getElementById('ml-confidence-value').textContent = slider.value + '%';
+}
+
+async function refreshMLSignals() {
+    const signalsDiv = document.getElementById('ml-signals');
+    signalsDiv.innerHTML = '<div class="ml-loading">Loading signals...</div>';
+
+    try {
+        const response = await fetch('/api/ml/signals?symbols=SOXL,NVDA,SPY,QQQ');
+        const data = await response.json();
+
+        if (data.success) {
+            mlSignals = data.signals;
+            renderMLSignals(data.signals);
+        } else {
+            signalsDiv.innerHTML = '<div class="ml-error">Error loading signals</div>';
+        }
+    } catch (error) {
+        console.error('Error fetching ML signals:', error);
+        signalsDiv.innerHTML = '<div class="ml-error">Connection error</div>';
+    }
+}
+
+function renderMLSignals(signals) {
+    const signalsDiv = document.getElementById('ml-signals');
+    let html = '';
+
+    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ'];
+
+    for (const symbol of symbolOrder) {
+        const signal = signals[symbol];
+        if (!signal) continue;
+
+        const signalClass = signal.signal === 'BUY' ? 'ml-buy' :
+                           signal.signal === 'SELL' ? 'ml-sell' : 'ml-hold';
+        const confidencePct = (signal.confidence * 100).toFixed(1);
+        const isActive = signal.confidence >= mlConfidence && signal.signal !== 'HOLD';
+
+        html += `
+            <div class="ml-signal-row ${isActive ? 'ml-active' : ''}">
+                <div class="ml-signal-symbol">${symbol}</div>
+                <div class="ml-signal-signal ${signalClass}">${signal.signal}</div>
+                <div class="ml-signal-confidence">${confidencePct}%</div>
+            </div>
+        `;
+    }
+
+    signalsDiv.innerHTML = html || '<div class="placeholder-text">No signals available</div>';
+}
+
+async function executeMLAutoTrade() {
+    const confirmed = confirm(
+        '⚡ ML AUTO-TRADE\n\n' +
+        'This will execute trades for all symbols with confidence >= ' + (mlConfidence * 100).toFixed(0) + '%\n\n' +
+        'Current signals:\n' +
+        Object.entries(mlSignals).map(([s, d]) => `${s}: ${d.signal} (${(d.confidence * 100).toFixed(1)}%)`).join('\n') +
+        '\n\nProceed with PAPER trading?'
+    );
+
+    if (!confirmed) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '⏳ Trading...';
+
+    try {
+        const response = await fetch(
+            `/api/ml/auto-trade?symbols=SOXL,NVDA,SPY,QQQ&min_confidence=${mlConfidence}`,
+            { method: 'POST' }
+        );
+        const data = await response.json();
+
+        if (data.success) {
+            const ordersCount = data.orders.length;
+            const signalsCount = Object.keys(data.signals).length;
+
+            alert(
+                `✅ Auto-Trade Complete\n\n` +
+                `Signals analyzed: ${signalsCount}\n` +
+                `Orders placed: ${ordersCount}\n` +
+                (data.errors.length ? `Errors: ${data.errors.length}` : '')
+            );
+
+            // Refresh positions and orders
+            loadPositions();
+            loadOrders();
+            loadAccount();
+        } else {
+            alert('❌ Auto-trade failed: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Auto-trade error:', error);
+        alert('❌ Connection error during auto-trade');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Auto-Trade';
+    }
+}

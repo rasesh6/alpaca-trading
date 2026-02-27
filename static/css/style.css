@@ -817,3 +817,266 @@ body.live-mode .btn-buy {
     0% { background-color: rgba(201, 162, 39, 0.3); }
     100% { background-color: transparent; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ML Trading Panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ml-trading-card {
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(34, 197, 94, 0.03) 100%);
+}
+
+.ml-trading-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ml-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    background: var(--bull-dim);
+    color: var(--bull);
+    border-radius: var(--radius-sm);
+    animation: pulse-ml 2s ease-in-out infinite;
+}
+
+.ml-badge.inactive {
+    background: var(--bear-dim);
+    color: var(--bear);
+    animation: none;
+}
+
+@keyframes pulse-ml {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.ml-controls {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.btn-ml {
+    flex: 1;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+}
+
+.btn-ml:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-gold);
+    color: var(--text-primary);
+}
+
+.btn-ml-trade {
+    flex: 1;
+    background: linear-gradient(135deg, var(--bull) 0%, #16a34a 100%);
+    color: white;
+    border: none;
+}
+
+.btn-ml-trade:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.ml-signals {
+    background: var(--bg-base);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    margin-bottom: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ml-signal-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+    border-left: 3px solid var(--border-subtle);
+}
+
+.ml-signal-item:last-child {
+    margin-bottom: 0;
+}
+
+.ml-signal-item.buy {
+    border-left-color: var(--bull);
+    background: linear-gradient(90deg, var(--bull-dim) 0%, var(--bg-elevated) 30%);
+}
+
+.ml-signal-item.sell {
+    border-left-color: var(--bear);
+    background: linear-gradient(90deg, var(--bear-dim) 0%, var(--bg-elevated) 30%);
+}
+
+.ml-signal-item.hold {
+    border-left-color: var(--text-tertiary);
+}
+
+.ml-signal-symbol {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.ml-signal-action {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    min-width: 45px;
+    text-align: center;
+}
+
+.ml-signal-action.buy {
+    background: var(--bull-dim);
+    color: var(--bull);
+}
+
+.ml-signal-action.sell {
+    background: var(--bear-dim);
+    color: var(--bear);
+}
+
+.ml-signal-action.hold {
+    background: var(--bg-base);
+    color: var(--text-tertiary);
+}
+
+.ml-signal-confidence {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--text-secondary);
+    min-width: 45px;
+    text-align: right;
+}
+
+.ml-signal-confidence.high {
+    color: var(--bull);
+}
+
+.ml-signal-confidence.medium {
+    color: var(--accent-gold);
+}
+
+.ml-signal-confidence.low {
+    color: var(--text-tertiary);
+}
+
+.ml-config {
+    padding-top: 6px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.ml-config label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.6875rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.ml-config input[type="range"] {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.ml-config input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent-gold);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.ml-config input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.ml-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+.ml-loading::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-default);
+    border-top-color: var(--accent-gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.ml-error {
+    color: var(--bear);
+    font-size: 0.6875rem;
+    padding: 8px;
+    background: var(--bear-dim);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.ml-success {
+    color: var(--bull);
+    font-size: 0.6875rem;
+    padding: 8px;
+    background: var(--bull-dim);
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+/* Account Card */
+.account-card h2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.account-mode {
+    font-size: 0.5625rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.account-mode.paper {
+    background: var(--bull-dim);
+    color: var(--bull);
+}
+
+.account-mode.live {
+    background: var(--bear-dim);
+    color: var(--bear);
+}

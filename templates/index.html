@@ -285,6 +285,22 @@
 
             <!-- Right Column -->
             <div class="column">
+                <!-- ML Trading Panel -->
+                <div class="card ml-trading-card">
+                    <h2>🤖 ML Trading <span class="ml-badge" id="ml-status-badge">ACTIVE</span></h2>
+                    <div class="ml-controls">
+                        <button class="btn btn-ml" onclick="refreshMLSignals()">🔄 Refresh Signals</button>
+                        <button class="btn btn-ml-trade" onclick="executeMLAutoTrade()">⚡ Auto-Trade</button>
+                    </div>
+                    <div class="ml-signals" id="ml-signals">
+                        <div class="placeholder-text">Loading ML signals...</div>
+                    </div>
+                    <div class="ml-config">
+                        <label>Min Confidence: <span id="ml-confidence-value">70%</span></label>
+                        <input type="range" id="ml-confidence" min="50" max="90" value="70" onchange="updateMLConfidence()">
+                    </div>
+                </div>
+
                 <!-- Positions -->
                 <div class="card flex-grow">
                     <h2>Positions</h2>
