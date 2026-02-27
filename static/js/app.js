@@ -1438,7 +1438,7 @@ async function refreshMLSignals() {
         const response = await fetch('/api/ml/signals?symbols=SOXL,NVDA,SPY,QQQ');
         const data = await response.json();
 
-        if (data.success) {
+        if (data.signals) {
             mlSignals = data.signals;
             renderMLSignals(data.signals);
         } else {
@@ -1460,16 +1460,17 @@ function renderMLSignals(signals) {
         const signal = signals[symbol];
         if (!signal) continue;
 
-        const signalClass = signal.signal === 'BUY' ? 'ml-buy' :
-                           signal.signal === 'SELL' ? 'ml-sell' : 'ml-hold';
+        const itemClass = signal.signal.toLowerCase();
         const confidencePct = (signal.confidence * 100).toFixed(1);
         const isActive = signal.confidence >= mlConfidence && signal.signal !== 'HOLD';
+        const confidenceClass = signal.confidence >= 0.7 ? 'high' :
+                               signal.confidence >= 0.5 ? 'medium' : 'low';
 
         html += `
-            <div class="ml-signal-row ${isActive ? 'ml-active' : ''}">
-                <div class="ml-signal-symbol">${symbol}</div>
-                <div class="ml-signal-signal ${signalClass}">${signal.signal}</div>
-                <div class="ml-signal-confidence">${confidencePct}%</div>
+            <div class="ml-signal-item ${itemClass}">
+                <span class="ml-signal-symbol">${symbol}</span>
+                <span class="ml-signal-action ${itemClass}">${signal.signal}</span>
+                <span class="ml-signal-confidence ${confidenceClass}">${confidencePct}%</span>
             </div>
         `;
     }
