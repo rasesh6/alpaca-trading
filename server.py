@@ -1080,6 +1080,244 @@ def api_check_trigger(order_id):
     return jsonify(response)
 
 
+# ==================== ML TRADING API ====================
+# Machine Learning Trading System endpoints
+
+# Add ml-trading to path
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ml-trading'))
+
+# ML Trading configuration
+ML_IB_HOST = os.getenv('IB_GATEWAY_HOST', 'ib-gateway.railway.internal')
+ML_IB_PORT = int(os.getenv('IB_GATEWAY_PORT', '4001'))
+
+@app.route('/api/ml/health', methods=['GET'])
+def ml_health():
+    """ML Trading system health check"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'ml-trading',
+        'ib_host': ML_IB_HOST,
+        'ib_port': ML_IB_PORT,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/ml/train/<symbol>', methods=['POST'])
+def ml_train(symbol):
+    """Train ML model for a symbol"""
+    symbol = symbol.upper()
+    days = int(request.args.get('days', 365))
+
+    logger.info(f"ML Training request: {symbol}, days={days}")
+
+    try:
+        from trainer import Trainer
+
+        trainer = Trainer(symbol)
+        trainer.fetch_data(days)
+        trainer.prepare_features()
+        model = trainer.train()
+        trainer.save_model()
+
+        feature_cols = trainer.feature_engineer.get_feature_columns()
+        importance = model.get_feature_importance(feature_cols)
+
+        return jsonify({
+            'success': True,
+            'symbol': symbol,
+            'days': days,
+            'train_samples': len(trainer.X_train),
+            'test_samples': len(trainer.X_test),
+            'model_saved': f"{symbol}_ensemble",
+            'top_features': dict(list(importance.items())[:10]),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"ML Training failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/ml/signal/<symbol>', methods=['GET'])
+def ml_signal(symbol):
+    """Get ML trading signal for a symbol"""
+    symbol = symbol.upper()
+    model_name = request.args.get('model', f"{symbol}_ensemble")
+
+    logger.info(f"ML Signal request: {symbol}, model={model_name}")
+
+    try:
+        from signal_generator import SignalGenerator
+
+        generator = SignalGenerator(symbol, model_name)
+        signal = generator.get_latest_signal()
+
+        return jsonify({
+            'success': True,
+            'symbol': symbol,
+            'signal': signal.get('signal', 'HOLD'),
+            'confidence': signal.get('confidence', 0),
+            'prediction': signal.get('prediction', 1),
+            'probabilities': signal.get('probabilities', {}),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"ML Signal failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/ml/quote/<symbol>', methods=['GET'])
+def ml_quote(symbol):
+    """Get real-time NBBO quote from IB Gateway"""
+    symbol = symbol.upper()
+
+    logger.info(f"ML Quote request: {symbol}")
+
+    try:
+        from ib_data_provider import IBDataProvider
+
+        provider = IBDataProvider(host=ML_IB_HOST, port=ML_IB_PORT)
+        quote = provider.get_realtime_quote(symbol)
+
+        if quote:
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'quote': quote,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Could not fetch quote',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+
+    except Exception as e:
+        logger.error(f"ML Quote failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/ml/backtest/<symbol>', methods=['POST'])
+def ml_backtest(symbol):
+    """Run ML backtest for a symbol"""
+    symbol = symbol.upper()
+    days = int(request.args.get('days', 365))
+    capital = float(request.args.get('capital', 10000))
+    confidence = float(request.args.get('confidence', 0.6))
+
+    logger.info(f"ML Backtest request: {symbol}, days={days}")
+
+    try:
+        from backtester import Backtester
+
+        backtester = Backtester(symbol, initial_capital=capital)
+        backtester.load_data(days)
+        results = backtester.run_backtest(confidence_threshold=confidence)
+
+        return jsonify({
+            'success': True,
+            'symbol': symbol,
+            'initial_capital': results.get('initial_capital'),
+            'final_value': results.get('final_value'),
+            'total_return': results.get('total_return'),
+            'buy_hold_return': results.get('buy_hold_return'),
+            'sharpe_ratio': results.get('sharpe_ratio'),
+            'total_trades': results.get('total_trades'),
+            'win_rate': results.get('win_rate'),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"ML Backtest failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/ml/full/<symbol>', methods=['POST'])
+def ml_full(symbol):
+    """Run full ML pipeline: train, signal, backtest"""
+    symbol = symbol.upper()
+    days = int(request.args.get('days', 365))
+
+    logger.info(f"ML Full pipeline request: {symbol}, days={days}")
+
+    results = {
+        'symbol': symbol,
+        'days': days,
+        'timestamp': datetime.now().isoformat()
+    }
+
+    # Train
+    try:
+        from trainer import Trainer
+
+        trainer = Trainer(symbol)
+        trainer.fetch_data(days)
+        trainer.prepare_features()
+        model = trainer.train()
+        trainer.save_model()
+
+        feature_cols = trainer.feature_engineer.get_feature_columns()
+        importance = model.get_feature_importance(feature_cols)
+
+        results['training'] = {
+            'success': True,
+            'train_samples': len(trainer.X_train),
+            'test_samples': len(trainer.X_test),
+            'top_features': dict(list(importance.items())[:5])
+        }
+    except Exception as e:
+        results['training'] = {'success': False, 'error': str(e)}
+
+    # Signal
+    try:
+        from signal_generator import SignalGenerator
+
+        generator = SignalGenerator(symbol)
+        signal = generator.get_latest_signal()
+
+        results['signal'] = {
+            'success': True,
+            'signal': signal.get('signal', 'HOLD'),
+            'confidence': signal.get('confidence', 0),
+            'probabilities': signal.get('probabilities', {})
+        }
+    except Exception as e:
+        results['signal'] = {'success': False, 'error': str(e)}
+
+    # Backtest
+    try:
+        from backtester import Backtester
+
+        backtester = Backtester(symbol)
+        backtester.load_data(days)
+        bt_results = backtester.run_backtest()
+
+        results['backtest'] = {
+            'success': True,
+            'total_return': bt_results.get('total_return'),
+            'win_rate': bt_results.get('win_rate'),
+            'total_trades': bt_results.get('total_trades')
+        }
+    except Exception as e:
+        results['backtest'] = {'success': False, 'error': str(e)}
+
+    return jsonify(results)
+
+
 # ==================== RUN ====================
 
 if __name__ == '__main__':
