@@ -26,9 +26,11 @@ def _get_unique_client_id() -> int:
     """Generate a unique client ID for IB connections"""
     global _client_id_counter
     with _client_id_lock:
+        # Use random base + counter to avoid any caching issues
+        import random
+        base = random.randint(1, 100) * 1000
         _client_id_counter += 1
-        # Use base 100 + counter to avoid conflicts with common IDs
-        return 100 + (_client_id_counter % 900)  # Range: 100-999
+        return base + (_client_id_counter % 999)  # Range: 1000-100999
 
 class IBDataProvider:
     """
@@ -104,6 +106,12 @@ class IBDataProvider:
 
             self.ib = IB()
 
+            # Set up disconnect handler for debugging
+            def on_disconnect():
+                logger.warning(f"IB disconnected! (clientId={self.client_id})")
+
+            self.ib.disconnectedEvent += on_disconnect
+
             # Try connecting with increasing timeout
             for timeout in [15, 30, 60]:
                 try:
@@ -113,11 +121,16 @@ class IBDataProvider:
                         clientId=self.client_id,
                         timeout=timeout
                     )
+                    logger.info(f"connect() returned, sleeping to stabilize...")
                     # Give the event loop time to process the connection
                     self.ib.sleep(0.5)
-                    self._connected = True
-                    logger.info(f"Connected to IB Gateway successfully (clientId={self.client_id}, timeout={timeout}s)")
-                    return True
+                    logger.info(f"sleep() completed, checking connection...")
+                    if self.ib.isConnected():
+                        self._connected = True
+                        logger.info(f"Connected to IB Gateway successfully (clientId={self.client_id}, timeout={timeout}s)")
+                        return True
+                    else:
+                        logger.warning(f"Connection lost after sleep (clientId={self.client_id})")
                 except Exception as e:
                     logger.warning(f"Connection attempt with timeout={timeout}s failed: {e}")
                     if timeout == 60:
