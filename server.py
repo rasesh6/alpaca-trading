@@ -1766,6 +1766,66 @@ def ml_model_history(symbol):
         }), 500
 
 
+@app.route('/api/ml/hyperparameter-tune', methods=['POST'])
+def ml_hyperparameter_tune():
+    """
+    Run hyperparameter tuning for models
+
+    Query params:
+    - symbol: Specific symbol to tune (optional, defaults to all)
+    - trials: Number of trials per symbol (default: 30)
+    """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+    symbol = request.args.get('symbol', None)
+    trials = int(request.args.get('trials', 30))
+
+    logger.info(f"Hyperparameter tuning request: symbol={symbol}, trials={trials}")
+
+    def run_tuning():
+        import sys
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+
+        # Import tuner
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ml-trading'))
+        from hyperparameter_tuner import tune_symbol, tune_all_symbols, DEFAULT_SYMBOLS
+
+        if symbol:
+            result = tune_symbol(symbol.upper(), n_trials=trials, timeout=300)
+            return {'symbols': [symbol.upper()], 'results': {symbol.upper(): result}}
+        else:
+            results = tune_all_symbols(symbols=DEFAULT_SYMBOLS, n_trials=trials, timeout=180)
+            return {'symbols': DEFAULT_SYMBOLS, 'results': results}
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_tuning)
+            # 30 minute timeout for all symbols
+            result = future.result(timeout=1800)
+
+        return jsonify({
+            'success': True,
+            'result': result,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except FuturesTimeoutError:
+        logger.error("Hyperparameter tuning timed out")
+        return jsonify({
+            'success': False,
+            'error': 'Tuning timed out (30 minute limit)',
+            'timestamp': datetime.now().isoformat()
+        }), 504
+    except Exception as e:
+        logger.error(f"Hyperparameter tuning failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
 # ==================== RUN ====================
 
 if __name__ == '__main__':
