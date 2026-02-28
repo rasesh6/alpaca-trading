@@ -107,6 +107,8 @@ class IBDataProvider:
                         clientId=self.client_id,
                         timeout=timeout
                     )
+                    # Give the event loop time to process the connection
+                    self.ib.sleep(0.1)
                     self._connected = True
                     logger.info(f"Connected to IB Gateway successfully (clientId={self.client_id}, timeout={timeout}s)")
                     return True
@@ -135,6 +137,8 @@ class IBDataProvider:
                         clientId=self.client_id,
                         timeout=30
                     )
+                    # Give the event loop time to process the connection
+                    self.ib.sleep(0.1)
                     self.port = alt_port
                     self._connected = True
                     logger.info(f"Connected to IB Gateway on alternative port {alt_port} (clientId={self.client_id})")
