@@ -1458,9 +1458,13 @@ function renderMLSignals(signals) {
     const signalsDiv = document.getElementById('ml-signals');
     let html = '';
 
-    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ', 'AAPL', 'GOOGL', 'MSFT', 'JPM', 'GS', 'META', 'SMCI', 'TSM', 'SNOW'];
+    // Sort signals by confidence (highest first)
+    const sortedSymbols = Object.entries(signals)
+        .filter(([symbol, signal]) => signal && signal.success !== false)
+        .sort((a, b) => (b[1].confidence || 0) - (a[1].confidence || 0))
+        .map(([symbol, signal]) => symbol);
 
-    for (const symbol of symbolOrder) {
+    for (const symbol of sortedSymbols) {
         const signal = signals[symbol];
         if (!signal) continue;
 
