@@ -4,6 +4,7 @@ alpaca-trade-api>=3.0.0
 alpaca-py>=0.10.0
 python-dotenv>=1.0.0
 gunicorn>=21.0.0
+gevent>=23.0.0
 
 # ML Trading System
 numpy>=1.21.0
