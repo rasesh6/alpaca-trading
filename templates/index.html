@@ -8,45 +8,45 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1>ALPACA TERMINAL</h1>
-            <div class="header-badges">
-                <div class="mode-toggle-container">
-                    <span class="mode-label {% if paper_mode %}active{% endif %}" id="paper-label">PAPER</span>
-                    <label class="mode-toggle">
-                        <input type="checkbox" id="trading-mode-toggle" {% if not paper_mode %}checked{% endif %} onchange="handleModeToggle()">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="mode-label {% if not paper_mode %}active live{% endif %}" id="live-label">LIVE</span>
-                </div>
-                <span class="badge" id="connection-status">Connected</span>
-            </div>
-        </header>
-
-        <!-- Account Info -->
-        <div class="card account-card">
-            <h2>Account</h2>
-            <div class="balance-display" id="account-info">
-                <div class="balance-row">
-                    <span>Cash</span>
-                    <span id="cash">-</span>
-                </div>
-                <div class="balance-row">
-                    <span>Buying Power</span>
-                    <span id="buying-power">-</span>
-                </div>
-                <div class="balance-row">
-                    <span>Portfolio Value</span>
-                    <span id="portfolio-value">-</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Grid -->
+        <!-- Main Grid - starts at top -->
         <div class="main-grid">
             <!-- Left Column -->
             <div class="column">
+                <!-- Header -->
+                <header class="header">
+                    <h1>ALPACA TERMINAL</h1>
+                    <div class="header-badges">
+                        <div class="mode-toggle-container">
+                            <span class="mode-label {% if paper_mode %}active{% endif %}" id="paper-label">PAPER</span>
+                            <label class="mode-toggle">
+                                <input type="checkbox" id="trading-mode-toggle" {% if not paper_mode %}checked{% endif %} onchange="handleModeToggle()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="mode-label {% if not paper_mode %}active live{% endif %}" id="live-label">LIVE</span>
+                        </div>
+                        <span class="badge" id="connection-status">Connected</span>
+                    </div>
+                </header>
+
+                <!-- Account Info -->
+                <div class="card account-card">
+                    <h2>Account</h2>
+                    <div class="balance-display" id="account-info">
+                        <div class="balance-row">
+                            <span>Cash</span>
+                            <span id="cash">-</span>
+                        </div>
+                        <div class="balance-row">
+                            <span>Buying Power</span>
+                            <span id="buying-power">-</span>
+                        </div>
+                        <div class="balance-row">
+                            <span>Portfolio Value</span>
+                            <span id="portfolio-value">-</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quote Card -->
                 <div class="card quote-card">
                     <h2>Quote <span class="streaming-badge" id="streaming-badge">STREAMING</span></h2>
