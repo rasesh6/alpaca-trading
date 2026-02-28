@@ -1,14 +1,37 @@
 """
 Ensemble Model for ML Trading
 Combines Random Forest, XGBoost, and LightGBM
+
+Supports Redis persistence (primary) with file fallback
 """
 import numpy as np
 import pandas as pd
 import joblib
 import os
+import logging
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from ml_config import ENSEMBLE_CONFIG, MODELS_DIR
+
+logger = logging.getLogger(__name__)
+
+# Redis configuration
+REDIS_URL = os.getenv('REDIS_URL')
+REDIS_MODEL_PREFIX = 'ml_trading:model:'
+
+
+def get_redis_client():
+    """Get Redis client if available"""
+    if not REDIS_URL:
+        return None
+    try:
+        import redis
+        client = redis.from_url(REDIS_URL)
+        client.ping()
+        return client
+    except Exception as e:
+        logger.warning(f"Redis not available for model storage: {e}")
+        return None
 
 
 class EnsembleModel:
@@ -20,6 +43,7 @@ class EnsembleModel:
         self.xgb_model = None
         self.lgb_model = None
         self.is_fitted = False
+        self.redis = get_redis_client()
 
     def build_models(self):
         """Build all models with configured parameters"""
@@ -161,30 +185,72 @@ class EnsembleModel:
         return dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))
 
     def save(self, name='ensemble_model'):
-        """Save models to disk"""
+        """Save models to Redis (primary) and disk (fallback)"""
+        import io
+
+        models = {
+            'rf': self.rf_model,
+            'xgb': self.xgb_model,
+            'lgb': self.lgb_model
+        }
+
+        # Save to Redis
+        if self.redis:
+            try:
+                for model_type, model in models.items():
+                    if model is not None:
+                        buffer = io.BytesIO()
+                        joblib.dump(model, buffer)
+                        buffer.seek(0)
+                        key = f"{REDIS_MODEL_PREFIX}{name}_{model_type}"
+                        self.redis.set(key, buffer.getvalue())
+                        logger.info(f"Saved {model_type} model to Redis: {key}")
+            except Exception as e:
+                logger.error(f"Error saving to Redis: {e}")
+
+        # Also save to disk as backup
         os.makedirs(MODELS_DIR, exist_ok=True)
+        for model_type, model in models.items():
+            if model is not None:
+                file_path = os.path.join(MODELS_DIR, f'{name}_{model_type}.pkl')
+                joblib.dump(model, file_path)
 
-        if self.rf_model:
-            joblib.dump(self.rf_model, os.path.join(MODELS_DIR, f'{name}_rf.pkl'))
-        if self.xgb_model:
-            joblib.dump(self.xgb_model, os.path.join(MODELS_DIR, f'{name}_xgb.pkl'))
-        if self.lgb_model:
-            joblib.dump(self.lgb_model, os.path.join(MODELS_DIR, f'{name}_lgb.pkl'))
-
-        print(f"Models saved to {MODELS_DIR}")
+        print(f"Models saved (Redis: {'yes' if self.redis else 'no'}, Disk: {MODELS_DIR})")
 
     def load(self, name='ensemble_model'):
-        """Load models from disk"""
-        rf_path = os.path.join(MODELS_DIR, f'{name}_rf.pkl')
-        xgb_path = os.path.join(MODELS_DIR, f'{name}_xgb.pkl')
-        lgb_path = os.path.join(MODELS_DIR, f'{name}_lgb.pkl')
+        """Load models from Redis (primary) or disk (fallback)"""
+        import io
 
-        if os.path.exists(rf_path):
-            self.rf_model = joblib.load(rf_path)
-        if os.path.exists(xgb_path):
-            self.xgb_model = joblib.load(xgb_path)
-        if os.path.exists(lgb_path):
-            self.lgb_model = joblib.load(lgb_path)
+        model_types = ['rf', 'xgb', 'lgb']
+        loaded = {'rf': None, 'xgb': None, 'lgb': None}
 
+        # Try Redis first
+        if self.redis:
+            try:
+                for model_type in model_types:
+                    key = f"{REDIS_MODEL_PREFIX}{name}_{model_type}"
+                    data = self.redis.get(key)
+                    if data:
+                        buffer = io.BytesIO(data)
+                        loaded[model_type] = joblib.load(buffer)
+                        logger.info(f"Loaded {model_type} model from Redis")
+            except Exception as e:
+                logger.warning(f"Error loading from Redis: {e}")
+
+        # Fallback to disk for any models not loaded from Redis
+        for model_type in model_types:
+            if loaded[model_type] is None:
+                file_path = os.path.join(MODELS_DIR, f'{name}_{model_type}.pkl')
+                if os.path.exists(file_path):
+                    loaded[model_type] = joblib.load(file_path)
+                    logger.info(f"Loaded {model_type} model from disk")
+
+        self.rf_model = loaded['rf']
+        self.xgb_model = loaded['xgb']
+        self.lgb_model = loaded['lgb']
         self.is_fitted = True
-        print(f"Models loaded from {MODELS_DIR}")
+
+        if self.rf_model is not None:
+            print(f"Models loaded for {name}")
+        else:
+            print(f"No models found for {name}")
