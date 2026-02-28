@@ -1,6 +1,9 @@
 """
 Model Manager for ML Trading
 Handles retraining, versioning, and performance monitoring
+
+Uses Redis for persistence (survives Railway deployments)
+Falls back to file storage if Redis unavailable
 """
 import os
 import json
@@ -18,38 +21,136 @@ MODELS_DIR = os.path.join(BASE_DIR, 'models')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 METRICS_FILE = os.path.join(BASE_DIR, 'model_metrics.json')
 
+# Redis configuration
+REDIS_URL = os.getenv('REDIS_URL')
+REDIS_KEY_PREFIX = 'ml_trading:metrics:'
+
 # Default symbols to train
 DEFAULT_SYMBOLS = ['SOXL', 'NVDA', 'SPY', 'QQQ']
 
 
+def get_redis_client():
+    """Get Redis client if available"""
+    if not REDIS_URL:
+        return None
+
+    try:
+        import redis
+        client = redis.from_url(REDIS_URL)
+        client.ping()  # Test connection
+        return client
+    except Exception as e:
+        logger.warning(f"Redis not available: {e}")
+        return None
+
+
 class ModelMetrics:
-    """Track and store model performance metrics"""
+    """Track and store model performance metrics (Redis-backed with file fallback)"""
 
     def __init__(self):
         self.metrics_file = METRICS_FILE
-        self._ensure_metrics_file()
+        self.redis = get_redis_client()
+        self._ensure_metrics()
 
-    def _ensure_metrics_file(self):
-        """Ensure metrics file exists"""
-        if not os.path.exists(self.metrics_file):
-            self._save_metrics({})
+    def _ensure_metrics(self):
+        """Ensure metrics exist, initialize from model files if needed"""
+        # Always check for existing models and initialize if missing
+        self._initialize_from_model_files()
+
+    def _get_redis_key(self, symbol: str) -> str:
+        """Get Redis key for a symbol"""
+        return f"{REDIS_KEY_PREFIX}{symbol}"
 
     def _load_metrics(self) -> Dict:
-        """Load metrics from file"""
+        """Load metrics from Redis (preferred) or file (fallback)"""
+        # Try Redis first
+        if self.redis:
+            try:
+                all_metrics = {}
+                for symbol in DEFAULT_SYMBOLS:
+                    data = self.redis.get(self._get_redis_key(symbol))
+                    if data:
+                        all_metrics[symbol] = json.loads(data)
+                if all_metrics:
+                    return all_metrics
+            except Exception as e:
+                logger.warning(f"Error loading from Redis: {e}")
+
+        # Fallback to file
         try:
-            with open(self.metrics_file, 'r') as f:
-                return json.load(f)
+            if os.path.exists(self.metrics_file):
+                with open(self.metrics_file, 'r') as f:
+                    return json.load(f)
         except Exception as e:
-            logger.error(f"Error loading metrics: {e}")
-            return {}
+            logger.error(f"Error loading metrics from file: {e}")
+
+        return {}
 
     def _save_metrics(self, metrics: Dict):
-        """Save metrics to file"""
+        """Save metrics to Redis (preferred) and file (backup)"""
+        # Save to Redis
+        if self.redis:
+            try:
+                for symbol, data in metrics.items():
+                    self.redis.set(
+                        self._get_redis_key(symbol),
+                        json.dumps(data, default=str)
+                    )
+                logger.debug("Saved metrics to Redis")
+            except Exception as e:
+                logger.warning(f"Error saving to Redis: {e}")
+
+        # Also save to file as backup
         try:
             with open(self.metrics_file, 'w') as f:
                 json.dump(metrics, f, indent=2, default=str)
         except Exception as e:
-            logger.error(f"Error saving metrics: {e}")
+            logger.warning(f"Error saving metrics to file: {e}")
+
+    def _initialize_from_model_files(self):
+        """Initialize metrics from existing model files"""
+        all_metrics = self._load_metrics()
+        changed = False
+
+        for symbol in DEFAULT_SYMBOLS:
+            # Check if model files exist
+            rf_path = os.path.join(MODELS_DIR, f'{symbol}_ensemble_rf.pkl')
+            xgb_path = os.path.join(MODELS_DIR, f'{symbol}_ensemble_xgb.pkl')
+            lgb_path = os.path.join(MODELS_DIR, f'{symbol}_ensemble_lgb.pkl')
+
+            model_exists = os.path.exists(rf_path) and os.path.exists(xgb_path) and os.path.exists(lgb_path)
+
+            if model_exists and symbol not in all_metrics:
+                # Model exists but no metrics - initialize with defaults
+                # Get file modification time as "last trained" date
+                try:
+                    mtime = os.path.getmtime(rf_path)
+                    last_trained = datetime.fromtimestamp(mtime).isoformat()
+                except:
+                    last_trained = datetime.now().isoformat()
+
+                all_metrics[symbol] = {
+                    'history': [{
+                        'timestamp': last_trained,
+                        'accuracy': None,
+                        'train_samples': None,
+                        'test_samples': None,
+                        'features_count': 30,
+                        'data_days': 500
+                    }],
+                    'current': {
+                        'version': 1,
+                        'last_trained': last_trained,
+                        'accuracy': None,
+                        'train_samples': None,
+                        'test_samples': None
+                    }
+                }
+                changed = True
+                logger.info(f"Initialized metrics for {symbol} from existing model files")
+
+        if changed:
+            self._save_metrics(all_metrics)
 
     def record_training(self, symbol: str, metrics: Dict):
         """Record training results for a model"""
@@ -178,10 +279,16 @@ class ModelMetrics:
         if not info:
             return True  # No model exists
 
-        last_trained = datetime.fromisoformat(info['last_trained'])
-        days_since = (datetime.now() - last_trained).days
+        last_trained = info.get('last_trained')
+        if not last_trained:
+            return True
 
-        return days_since >= days_threshold
+        try:
+            last_trained_dt = datetime.fromisoformat(last_trained)
+            days_since = (datetime.now() - last_trained_dt).days
+            return days_since >= days_threshold
+        except:
+            return True
 
 
 class ModelRetrainer:
