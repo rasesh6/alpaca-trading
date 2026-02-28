@@ -1396,6 +1396,18 @@ def ml_signals_all():
     def get_signal_with_timeout(symbol):
         """Get signal for a single symbol with timeout"""
         try:
+            import asyncio
+            # Create event loop for this thread (required for ib_insync)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Apply nest_asyncio for nested event loops (required for ib_insync)
+            try:
+                import nest_asyncio
+                nest_asyncio.apply()
+            except ImportError:
+                pass
+
             from signal_generator import SignalGenerator
 
             generator = SignalGenerator(symbol)
@@ -1517,6 +1529,18 @@ def ml_auto_trade():
 
     def run_trading():
         try:
+            import asyncio
+            # Create event loop for this thread (required for ib_insync)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Apply nest_asyncio for nested event loops (required for ib_insync)
+            try:
+                import nest_asyncio
+                nest_asyncio.apply()
+            except ImportError:
+                pass
+
             from auto_trader import MLAutoTrader
 
             trader = MLAutoTrader(paper=True)

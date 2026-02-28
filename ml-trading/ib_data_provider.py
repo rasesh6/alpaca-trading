@@ -50,11 +50,21 @@ class IBDataProvider:
         """Ensure an asyncio event loop exists for ib_insync"""
         import asyncio
         try:
+            # Try to get running loop first
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            # No running loop, create one
+            # No running loop, create and set one for this thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+
+        # Apply nest_asyncio to allow nested event loops (required for ib_insync in threads)
+        try:
+            import nest_asyncio
+            nest_asyncio.apply()
+        except ImportError:
+            # If nest_asyncio not available, try to proceed anyway
+            logger.warning("nest_asyncio not installed. Run: pip install nest_asyncio")
+
         self._event_loop = loop
         return loop
 

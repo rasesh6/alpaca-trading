@@ -128,6 +128,13 @@ class MLAutoTrader:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
+                # Apply nest_asyncio to allow nested event loops (required for ib_insync)
+                try:
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                except ImportError:
+                    pass  # Will be handled in ib_data_provider
+
                 ib_provider = IBDataProviderFallback()
                 return ib_provider.get_realtime_quote(symbol)
             except Exception as e:
