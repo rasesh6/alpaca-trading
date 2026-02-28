@@ -7,6 +7,7 @@ Features: Paper/Live trading, positions, orders, exit strategies, WebSocket stre
 # Gevent monkey patching MUST be first, before any other imports
 from gevent import monkey
 monkey.patch_all()
+import gevent
 
 import os
 import sys
@@ -1388,6 +1389,7 @@ def ml_signals_all():
     """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
     from model_manager import DEFAULT_SYMBOLS
+    from gevent.threadpool import ThreadPool
 
     default_symbols = ','.join(DEFAULT_SYMBOLS)
     symbols_str = request.args.get('symbols', default_symbols)
@@ -1436,15 +1438,15 @@ def ml_signals_all():
                 'error': str(e)
             }
 
-    # Use thread pool to avoid blocking on IB operations
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {executor.submit(get_signal_with_timeout, symbol): symbol for symbol in symbols}
+    # Use gevent thread pool to avoid blocking
+    pool = ThreadPool(4)
+    jobs = [pool.spawn(get_signal_with_timeout, symbol) for symbol in symbols]
+    gevent.joinall(jobs, timeout=30)
 
-        for future in futures:
-            symbol = futures[future]
-            try:
-                # 15 second timeout per symbol
-                result = future.result(timeout=15)
+    for job, symbol in zip(jobs, symbols):
+        try:
+            result = job.value
+            if result:
                 results['signals'][symbol] = {
                     'success': result['success'],
                     'signal': result.get('signal', 'HOLD'),
@@ -1453,18 +1455,19 @@ def ml_signals_all():
                 }
                 if not result['success']:
                     results['signals'][symbol]['error'] = result.get('error', 'Unknown error')
-            except FuturesTimeoutError:
+            else:
+                # Job timed out or returned None
                 logger.error(f"Signal timed out for {symbol}")
                 results['signals'][symbol] = {
                     'success': False,
                     'error': 'Timeout fetching signal'
                 }
-            except Exception as e:
-                logger.error(f"Signal failed for {symbol}: {e}")
-                results['signals'][symbol] = {
-                    'success': False,
-                    'error': str(e)
-                }
+        except Exception as e:
+            logger.error(f"Signal failed for {symbol}: {e}")
+            results['signals'][symbol] = {
+                'success': False,
+                'error': str(e)
+            }
 
     return jsonify(results)
 
