@@ -32,12 +32,14 @@ DEFAULT_SYMBOLS = ['SOXL', 'NVDA', 'SPY', 'QQQ']
 def get_redis_client():
     """Get Redis client if available"""
     if not REDIS_URL:
+        logger.info("REDIS_URL not set, using file storage")
         return None
 
     try:
         import redis
         client = redis.from_url(REDIS_URL)
         client.ping()  # Test connection
+        logger.info(f"Redis connected successfully to {REDIS_URL[:30]}...")
         return client
     except Exception as e:
         logger.warning(f"Redis not available: {e}")
@@ -96,7 +98,7 @@ class ModelMetrics:
                         self._get_redis_key(symbol),
                         json.dumps(data, default=str)
                     )
-                logger.debug("Saved metrics to Redis")
+                logger.info(f"Saved metrics to Redis for {len(metrics)} symbols")
             except Exception as e:
                 logger.warning(f"Error saving to Redis: {e}")
 
@@ -109,7 +111,11 @@ class ModelMetrics:
 
     def _initialize_from_model_files(self):
         """Initialize metrics from existing model files"""
+        logger.info(f"MODELS_DIR: {MODELS_DIR}")
+        logger.info(f"MODELS_DIR exists: {os.path.exists(MODELS_DIR)}")
+
         all_metrics = self._load_metrics()
+        logger.info(f"Loaded metrics: {list(all_metrics.keys())}")
         changed = False
 
         for symbol in DEFAULT_SYMBOLS:
@@ -119,6 +125,7 @@ class ModelMetrics:
             lgb_path = os.path.join(MODELS_DIR, f'{symbol}_ensemble_lgb.pkl')
 
             model_exists = os.path.exists(rf_path) and os.path.exists(xgb_path) and os.path.exists(lgb_path)
+            logger.info(f"{symbol}: model_exists={model_exists}, in_metrics={symbol in all_metrics}")
 
             if model_exists and symbol not in all_metrics:
                 # Model exists but no metrics - initialize with defaults
