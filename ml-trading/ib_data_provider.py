@@ -5,6 +5,8 @@ Fetches historical bars and real-time NBBO quotes via IB Gateway
 import os
 import time
 import logging
+import random
+import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 import pandas as pd
@@ -15,6 +17,18 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Global counter for unique client IDs
+_client_id_counter = 0
+_client_id_lock = threading.Lock()
+
+def _get_unique_client_id() -> int:
+    """Generate a unique client ID for IB connections"""
+    global _client_id_counter
+    with _client_id_lock:
+        _client_id_counter += 1
+        # Use base 100 + counter to avoid conflicts with common IDs
+        return 100 + (_client_id_counter % 900)  # Range: 100-999
 
 class IBDataProvider:
     """
@@ -42,9 +56,12 @@ class IBDataProvider:
         self.host = host or os.getenv('IB_GATEWAY_HOST', 'ib-gateway.railway.internal')
         # Default to 4001 (direct API port)
         self.port = port or int(os.getenv('IB_GATEWAY_PORT', '4001'))
+        # Generate unique client ID for this instance
+        self.client_id = _get_unique_client_id()
         self.ib = None
         self._connected = False
         self._event_loop = None
+        logger.debug(f"IBDataProvider created with clientId={self.client_id}")
 
     def _ensure_event_loop(self):
         """Ensure an asyncio event loop exists for ib_insync"""
@@ -77,7 +94,7 @@ class IBDataProvider:
             # Ensure event loop exists (required for ib_insync in threads)
             self._ensure_event_loop()
 
-            logger.info(f"Connecting to IB Gateway at {self.host}:{self.port}...")
+            logger.info(f"Connecting to IB Gateway at {self.host}:{self.port} with clientId={self.client_id}...")
 
             self.ib = IB()
 
@@ -87,11 +104,11 @@ class IBDataProvider:
                     self.ib.connect(
                         self.host,
                         self.port,
-                        clientId=15,  # Unique client ID for ML trading
+                        clientId=self.client_id,
                         timeout=timeout
                     )
                     self._connected = True
-                    logger.info(f"Connected to IB Gateway successfully (timeout={timeout}s)")
+                    logger.info(f"Connected to IB Gateway successfully (clientId={self.client_id}, timeout={timeout}s)")
                     return True
                 except Exception as e:
                     logger.warning(f"Connection attempt with timeout={timeout}s failed: {e}")
@@ -115,12 +132,12 @@ class IBDataProvider:
                     self.ib.connect(
                         self.host,
                         alt_port,
-                        clientId=15,
+                        clientId=self.client_id,
                         timeout=30
                     )
                     self.port = alt_port
                     self._connected = True
-                    logger.info(f"Connected to IB Gateway on alternative port {alt_port}")
+                    logger.info(f"Connected to IB Gateway on alternative port {alt_port} (clientId={self.client_id})")
                     return True
                 except Exception as e2:
                     logger.warning(f"Port {alt_port} failed: {e2}")
