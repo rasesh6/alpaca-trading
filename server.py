@@ -4,6 +4,10 @@ Alpaca Trading System - Flask Server
 A modern web-based trading interface using Alpaca's API.
 Features: Paper/Live trading, positions, orders, exit strategies, WebSocket streaming
 """
+# Gevent monkey patching MUST be first, before any other imports
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import sys
 import json
