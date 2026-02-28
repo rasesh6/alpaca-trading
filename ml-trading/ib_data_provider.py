@@ -88,11 +88,17 @@ class IBDataProvider:
     def connect(self) -> bool:
         """Connect to IB Gateway"""
         try:
-            from ib_insync import IB
+            from ib_insync import IB, util
             import asyncio
 
             # Ensure event loop exists (required for ib_insync in threads)
             self._ensure_event_loop()
+
+            # Use util.startLoop() for proper event loop handling in threads
+            try:
+                util.startLoop()
+            except Exception as e:
+                logger.debug(f"startLoop() note: {e}")
 
             logger.info(f"Connecting to IB Gateway at {self.host}:{self.port} with clientId={self.client_id}...")
 
@@ -108,7 +114,7 @@ class IBDataProvider:
                         timeout=timeout
                     )
                     # Give the event loop time to process the connection
-                    self.ib.sleep(0.1)
+                    self.ib.sleep(0.5)
                     self._connected = True
                     logger.info(f"Connected to IB Gateway successfully (clientId={self.client_id}, timeout={timeout}s)")
                     return True
@@ -138,7 +144,7 @@ class IBDataProvider:
                         timeout=30
                     )
                     # Give the event loop time to process the connection
-                    self.ib.sleep(0.1)
+                    self.ib.sleep(0.5)
                     self.port = alt_port
                     self._connected = True
                     logger.info(f"Connected to IB Gateway on alternative port {alt_port} (clientId={self.client_id})")
