@@ -1480,8 +1480,8 @@ function renderMLSignals(signals) {
 
 async function executeMLAutoTrade() {
     const confirmed = confirm(
-        '⚡ ML AUTO-TRADE\n\n' +
-        'This will execute trades for all symbols with confidence >= ' + (mlConfidence * 100).toFixed(0) + '%\n\n' +
+        '⚡ ML SWING AUTO-TRADE\n\n' +
+        'This will execute SWING TRADES (5-day horizon) for all symbols with confidence >= ' + (mlConfidence * 100).toFixed(0) + '%\n\n' +
         'Current signals:\n' +
         Object.entries(mlSignals).map(([s, d]) => `${s}: ${d.signal} (${(d.confidence * 100).toFixed(1)}%)`).join('\n') +
         '\n\nProceed with PAPER trading?'

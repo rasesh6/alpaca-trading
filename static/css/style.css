@@ -833,6 +833,21 @@ body.live-mode .btn-buy {
     gap: 8px;
 }
 
+.ml-description {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    line-height: 1.4;
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid var(--accent);
+}
+
+.ml-description strong {
+    color: var(--accent);
+}
+
 .ml-badge {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.5rem;
