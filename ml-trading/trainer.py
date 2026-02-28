@@ -30,11 +30,15 @@ class Trainer:
 
     def __init__(self, symbol, use_live=False):
         self.symbol = symbol
-        self.api = alpaca.REST(
-            key_id=PAPER_API_KEY,
-            secret_key=PAPER_SECRET_KEY,
-            base_url=PAPER_BASE_URL
-        )
+        # Only initialize Alpaca API if credentials are available
+        if PAPER_API_KEY and PAPER_SECRET_KEY:
+            self.api = alpaca.REST(
+                key_id=PAPER_API_KEY,
+                secret_key=PAPER_SECRET_KEY,
+                base_url=PAPER_BASE_URL
+            )
+        else:
+            self.api = None
         self.feature_engineer = FeatureEngineer()
         self.model = EnsembleModel()
         self.df = None
