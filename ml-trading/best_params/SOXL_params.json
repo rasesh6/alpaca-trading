@@ -1,0 +1,23 @@
+{
+  "symbol": "SOXL",
+  "best_accuracy": 0.41964285714285715,
+  "best_params": {
+    "rf_n_estimators": 478,
+    "rf_max_depth": 4,
+    "rf_min_samples_split": 20,
+    "rf_min_samples_leaf": 9,
+    "xgb_n_estimators": 286,
+    "xgb_max_depth": 9,
+    "xgb_learning_rate": 0.03417445753239965,
+    "xgb_subsample": 0.870628951897112,
+    "xgb_colsample_bytree": 0.7090432445191854,
+    "lgb_n_estimators": 497,
+    "lgb_max_depth": 11,
+    "lgb_learning_rate": 0.03905129752913788,
+    "lgb_num_leaves": 59,
+    "weight_rf": 0.40813744650071093,
+    "weight_xgb": 0.4170331163111585
+  },
+  "n_trials": 18,
+  "timestamp": "2026-02-28T14:47:10.083259"
+}

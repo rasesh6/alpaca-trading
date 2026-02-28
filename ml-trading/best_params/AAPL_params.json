@@ -1,0 +1,23 @@
+{
+  "symbol": "AAPL",
+  "best_accuracy": 0.46428571428571425,
+  "best_params": {
+    "rf_n_estimators": 104,
+    "rf_max_depth": 15,
+    "rf_min_samples_split": 5,
+    "rf_min_samples_leaf": 1,
+    "xgb_n_estimators": 252,
+    "xgb_max_depth": 9,
+    "xgb_learning_rate": 0.07684007670476012,
+    "xgb_subsample": 0.9966587044216679,
+    "xgb_colsample_bytree": 0.9147744175060225,
+    "lgb_n_estimators": 220,
+    "lgb_max_depth": 15,
+    "lgb_learning_rate": 0.014224072170868126,
+    "lgb_num_leaves": 24,
+    "weight_rf": 0.24395261737740384,
+    "weight_xgb": 0.3858119227984005
+  },
+  "n_trials": 19,
+  "timestamp": "2026-02-28T14:59:24.300348"
+}

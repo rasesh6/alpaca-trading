@@ -1,0 +1,23 @@
+{
+  "symbol": "TSM",
+  "best_accuracy": 0.4672619047619048,
+  "best_params": {
+    "rf_n_estimators": 423,
+    "rf_max_depth": 19,
+    "rf_min_samples_split": 8,
+    "rf_min_samples_leaf": 2,
+    "xgb_n_estimators": 191,
+    "xgb_max_depth": 7,
+    "xgb_learning_rate": 0.16155001304356417,
+    "xgb_subsample": 0.9442922333025374,
+    "xgb_colsample_bytree": 0.6027808522124762,
+    "lgb_n_estimators": 304,
+    "lgb_max_depth": 8,
+    "lgb_learning_rate": 0.0212853192163843,
+    "lgb_num_leaves": 20,
+    "weight_rf": 0.3012845514210884,
+    "weight_xgb": 0.48287291117375575
+  },
+  "n_trials": 20,
+  "timestamp": "2026-02-28T15:21:12.748407"
+}

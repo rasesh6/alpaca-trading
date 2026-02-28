@@ -1,0 +1,23 @@
+{
+  "symbol": "NVDA",
+  "best_accuracy": 0.49702380952380953,
+  "best_params": {
+    "rf_n_estimators": 392,
+    "rf_max_depth": 17,
+    "rf_min_samples_split": 3,
+    "rf_min_samples_leaf": 4,
+    "xgb_n_estimators": 146,
+    "xgb_max_depth": 11,
+    "xgb_learning_rate": 0.08330803890301997,
+    "xgb_subsample": 0.7323592099410596,
+    "xgb_colsample_bytree": 0.6254233401144095,
+    "lgb_n_estimators": 224,
+    "lgb_max_depth": 7,
+    "lgb_learning_rate": 0.1195960383019184,
+    "lgb_num_leaves": 46,
+    "weight_rf": 0.466163822772898,
+    "weight_xgb": 0.3416644775485848
+  },
+  "n_trials": 25,
+  "timestamp": "2026-02-28T14:50:10.373174"
+}

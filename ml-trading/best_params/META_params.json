@@ -1,0 +1,23 @@
+{
+  "symbol": "META",
+  "best_accuracy": 0.4613095238095239,
+  "best_params": {
+    "rf_n_estimators": 328,
+    "rf_max_depth": 19,
+    "rf_min_samples_split": 20,
+    "rf_min_samples_leaf": 2,
+    "xgb_n_estimators": 364,
+    "xgb_max_depth": 9,
+    "xgb_learning_rate": 0.036070433342978936,
+    "xgb_subsample": 0.7576201168727412,
+    "xgb_colsample_bytree": 0.7785595051280685,
+    "lgb_n_estimators": 317,
+    "lgb_max_depth": 8,
+    "lgb_learning_rate": 0.1483711535641413,
+    "lgb_num_leaves": 61,
+    "weight_rf": 0.49202874230854765,
+    "weight_xgb": 0.33118909351147613
+  },
+  "n_trials": 21,
+  "timestamp": "2026-02-28T15:14:58.330330"
+}

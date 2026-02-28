@@ -1,0 +1,23 @@
+{
+  "symbol": "GOOGL",
+  "best_accuracy": 0.5267857142857143,
+  "best_params": {
+    "rf_n_estimators": 157,
+    "rf_max_depth": 17,
+    "rf_min_samples_split": 19,
+    "rf_min_samples_leaf": 5,
+    "xgb_n_estimators": 359,
+    "xgb_max_depth": 3,
+    "xgb_learning_rate": 0.08451393609239745,
+    "xgb_subsample": 0.8157091115658528,
+    "xgb_colsample_bytree": 0.668384414249878,
+    "lgb_n_estimators": 165,
+    "lgb_max_depth": 6,
+    "lgb_learning_rate": 0.11481947743188636,
+    "lgb_num_leaves": 29,
+    "weight_rf": 0.3362638529712524,
+    "weight_xgb": 0.43646459097561113
+  },
+  "n_trials": 21,
+  "timestamp": "2026-02-28T15:02:29.781076"
+}

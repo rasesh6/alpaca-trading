@@ -1,0 +1,23 @@
+{
+  "symbol": "SPY",
+  "best_accuracy": 0.3898809523809524,
+  "best_params": {
+    "rf_n_estimators": 250,
+    "rf_max_depth": 20,
+    "rf_min_samples_split": 15,
+    "rf_min_samples_leaf": 6,
+    "xgb_n_estimators": 162,
+    "xgb_max_depth": 4,
+    "xgb_learning_rate": 0.012184186502221764,
+    "xgb_subsample": 0.9464704583099741,
+    "xgb_colsample_bytree": 0.8404460046972835,
+    "lgb_n_estimators": 383,
+    "lgb_max_depth": 3,
+    "lgb_learning_rate": 0.27081608642499677,
+    "lgb_num_leaves": 55,
+    "weight_rf": 0.26370173320348284,
+    "weight_xgb": 0.2545474901621302
+  },
+  "n_trials": 19,
+  "timestamp": "2026-02-28T14:53:14.128557"
+}

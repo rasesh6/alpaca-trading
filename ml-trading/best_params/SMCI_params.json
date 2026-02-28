@@ -1,0 +1,23 @@
+{
+  "symbol": "SMCI",
+  "best_accuracy": 0.5119047619047619,
+  "best_params": {
+    "rf_n_estimators": 224,
+    "rf_max_depth": 20,
+    "rf_min_samples_split": 20,
+    "rf_min_samples_leaf": 7,
+    "xgb_n_estimators": 268,
+    "xgb_max_depth": 6,
+    "xgb_learning_rate": 0.028046309459322447,
+    "xgb_subsample": 0.8887438674032424,
+    "xgb_colsample_bytree": 0.6885938892198251,
+    "lgb_n_estimators": 448,
+    "lgb_max_depth": 8,
+    "lgb_learning_rate": 0.08116705185056111,
+    "lgb_num_leaves": 54,
+    "weight_rf": 0.2508617659631352,
+    "weight_xgb": 0.2394279216464421
+  },
+  "n_trials": 20,
+  "timestamp": "2026-02-28T15:18:00.669895"
+}

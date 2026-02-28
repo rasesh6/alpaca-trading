@@ -1,0 +1,23 @@
+{
+  "symbol": "SNOW",
+  "best_accuracy": 0.4523809523809524,
+  "best_params": {
+    "rf_n_estimators": 287,
+    "rf_max_depth": 14,
+    "rf_min_samples_split": 13,
+    "rf_min_samples_leaf": 3,
+    "xgb_n_estimators": 249,
+    "xgb_max_depth": 4,
+    "xgb_learning_rate": 0.010108940264039802,
+    "xgb_subsample": 0.7487801373250512,
+    "xgb_colsample_bytree": 0.8391244902157873,
+    "lgb_n_estimators": 442,
+    "lgb_max_depth": 4,
+    "lgb_learning_rate": 0.10872042822636785,
+    "lgb_num_leaves": 44,
+    "weight_rf": 0.25172891456942625,
+    "weight_xgb": 0.2537268428868779
+  },
+  "n_trials": 30,
+  "timestamp": "2026-02-28T15:23:50.229452"
+}

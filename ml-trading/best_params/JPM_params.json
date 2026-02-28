@@ -1,0 +1,23 @@
+{
+  "symbol": "JPM",
+  "best_accuracy": 0.40178571428571425,
+  "best_params": {
+    "rf_n_estimators": 255,
+    "rf_max_depth": 8,
+    "rf_min_samples_split": 17,
+    "rf_min_samples_leaf": 4,
+    "xgb_n_estimators": 212,
+    "xgb_max_depth": 8,
+    "xgb_learning_rate": 0.016149614799999188,
+    "xgb_subsample": 0.9208787923016158,
+    "xgb_colsample_bytree": 0.6298202574719083,
+    "lgb_n_estimators": 495,
+    "lgb_max_depth": 13,
+    "lgb_learning_rate": 0.019657448966046126,
+    "lgb_num_leaves": 15,
+    "weight_rf": 0.44463842853645025,
+    "weight_xgb": 0.4120572031542851
+  },
+  "n_trials": 20,
+  "timestamp": "2026-02-28T15:08:42.100702"
+}

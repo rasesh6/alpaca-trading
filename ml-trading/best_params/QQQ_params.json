@@ -1,0 +1,23 @@
+{
+  "symbol": "QQQ",
+  "best_accuracy": 0.33928571428571425,
+  "best_params": {
+    "rf_n_estimators": 199,
+    "rf_max_depth": 10,
+    "rf_min_samples_split": 16,
+    "rf_min_samples_leaf": 3,
+    "xgb_n_estimators": 130,
+    "xgb_max_depth": 5,
+    "xgb_learning_rate": 0.017303875834205888,
+    "xgb_subsample": 0.9718790609370292,
+    "xgb_colsample_bytree": 0.9232481518257668,
+    "lgb_n_estimators": 353,
+    "lgb_max_depth": 14,
+    "lgb_learning_rate": 0.1538583627271404,
+    "lgb_num_leaves": 24,
+    "weight_rf": 0.4677676995469933,
+    "weight_xgb": 0.3618026725746952
+  },
+  "n_trials": 19,
+  "timestamp": "2026-02-28T14:56:20.604100"
+}
