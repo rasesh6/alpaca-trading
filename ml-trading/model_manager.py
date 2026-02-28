@@ -26,7 +26,7 @@ REDIS_URL = os.getenv('REDIS_URL')
 REDIS_KEY_PREFIX = 'ml_trading:metrics:'
 
 # Default symbols to train
-DEFAULT_SYMBOLS = ['SOXL', 'NVDA', 'SPY', 'QQQ']
+DEFAULT_SYMBOLS = ['SOXL', 'NVDA', 'SPY', 'QQQ', 'AAPL', 'GOOGL', 'MSFT', 'JPM', 'GS', 'META', 'SMCI', 'TSM', 'SNOW']
 
 
 def get_redis_client():

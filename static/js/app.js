@@ -1439,7 +1439,7 @@ async function refreshMLSignals() {
     signalsDiv.innerHTML = '<div class="ml-loading">Loading signals...</div>';
 
     try {
-        const response = await fetch('/api/ml/signals?symbols=SOXL,NVDA,SPY,QQQ');
+        const response = await fetch('/api/ml/signals');
         const data = await response.json();
 
         if (data.signals) {
@@ -1458,7 +1458,7 @@ function renderMLSignals(signals) {
     const signalsDiv = document.getElementById('ml-signals');
     let html = '';
 
-    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ'];
+    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ', 'AAPL', 'GOOGL', 'MSFT', 'JPM', 'GS', 'META', 'SMCI', 'TSM', 'SNOW'];
 
     for (const symbol of symbolOrder) {
         const signal = signals[symbol];
@@ -1499,7 +1499,7 @@ async function executeMLAutoTrade() {
 
     try {
         const response = await fetch(
-            `/api/ml/auto-trade?symbols=SOXL,NVDA,SPY,QQQ&min_confidence=${mlConfidence}`,
+            `/api/ml/auto-trade?min_confidence=${mlConfidence}`,
             { method: 'POST' }
         );
         const data = await response.json();
@@ -1558,7 +1558,7 @@ function renderModelStatus(models) {
     const statusDiv = document.getElementById('model-status');
     let html = '';
 
-    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ'];
+    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ', 'AAPL', 'GOOGL', 'MSFT', 'JPM', 'GS', 'META', 'SMCI', 'TSM', 'SNOW'];
 
     for (const symbol of symbolOrder) {
         const model = models[symbol];

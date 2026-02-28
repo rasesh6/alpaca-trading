@@ -34,13 +34,13 @@ def main():
     logger.info("=" * 60)
 
     try:
-        from model_manager import ModelRetrainer, ModelMetrics
+        from model_manager import ModelRetrainer, ModelMetrics, DEFAULT_SYMBOLS
 
         retrainer = ModelRetrainer()
         metrics = ModelMetrics()
 
         # Check which models need retraining (7 day threshold)
-        symbols = ['SOXL', 'NVDA', 'SPY', 'QQQ']
+        symbols = DEFAULT_SYMBOLS
         to_retrain = []
 
         for symbol in symbols:

@@ -1334,10 +1334,12 @@ def ml_train_all():
     Train models for multiple symbols
 
     Query params:
-    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    - symbols: Comma-separated list of symbols (default: all DEFAULT_SYMBOLS)
     - days: Number of days of history (default: 500)
     """
-    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    from model_manager import DEFAULT_SYMBOLS
+    default_symbols = ','.join(DEFAULT_SYMBOLS)
+    symbols_str = request.args.get('symbols', default_symbols)
     symbols = [s.strip().upper() for s in symbols_str.split(',')]
     days = int(request.args.get('days', 500))
 
@@ -1382,11 +1384,13 @@ def ml_signals_all():
     Get signals for multiple symbols
 
     Query params:
-    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    - symbols: Comma-separated list of symbols (default: all DEFAULT_SYMBOLS)
     """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+    from model_manager import DEFAULT_SYMBOLS
 
-    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    default_symbols = ','.join(DEFAULT_SYMBOLS)
+    symbols_str = request.args.get('symbols', default_symbols)
     symbols = [s.strip().upper() for s in symbols_str.split(',')]
 
     logger.info(f"ML Signals request: {symbols}")
@@ -1520,12 +1524,14 @@ def ml_auto_trade():
     Execute trades based on ML signals (paper trading)
 
     Query params:
-    - symbols: Comma-separated list of symbols (default: SOXL,NVDA,SPY,QQQ)
+    - symbols: Comma-separated list of symbols (default: all DEFAULT_SYMBOLS)
     - min_confidence: Minimum confidence to trade (default: 0.7)
     """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+    from model_manager import DEFAULT_SYMBOLS
 
-    symbols_str = request.args.get('symbols', 'SOXL,NVDA,SPY,QQQ')
+    default_symbols = ','.join(DEFAULT_SYMBOLS)
+    symbols_str = request.args.get('symbols', default_symbols)
     symbols = [s.strip().upper() for s in symbols_str.split(',')]
     min_confidence = float(request.args.get('min_confidence', 0.7))
 
@@ -1592,6 +1598,7 @@ def ml_status():
     """Get ML trading system status including account info and positions"""
     try:
         from auto_trader import MLAutoTrader
+        from model_manager import DEFAULT_SYMBOLS
 
         trader = MLAutoTrader(paper=True)
         account = trader.get_account_info()
@@ -1599,7 +1606,7 @@ def ml_status():
 
         # Get signals for held positions
         signals = {}
-        for symbol in list(positions.keys()) + ['SOXL', 'NVDA', 'SPY', 'QQQ']:
+        for symbol in list(positions.keys()) + DEFAULT_SYMBOLS:
             if symbol not in signals:
                 try:
                     from signal_generator import SignalGenerator
