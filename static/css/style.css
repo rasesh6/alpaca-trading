@@ -645,8 +645,8 @@ select {
 }
 
 .response-area.success {
-    border-color: rgba(34, 197, 94, 0.3);
-    background: linear-gradient(135deg, var(--bg-base) 0%, rgba(34, 197, 94, 0.05) 100%);
+    border-color: rgba(150, 150, 160, 0.3);
+    background: linear-gradient(135deg, var(--bg-base) 0%, rgba(150, 150, 160, 0.05) 100%);
 }
 
 .response-area.error {
@@ -656,7 +656,7 @@ select {
 
 /* Order status in response area */
 .order-summary.status-filled {
-    color: var(--bull);
+    color: #a0a8b8;
 }
 
 .order-summary.status-cancelled {
@@ -823,8 +823,8 @@ body.live-mode .btn-buy {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .ml-trading-card {
-    border: 1px solid rgba(34, 197, 94, 0.2);
-    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(34, 197, 94, 0.03) 100%);
+    border: 1px solid rgba(150, 150, 160, 0.3);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(150, 150, 160, 0.05) 100%);
 }
 
 .ml-trading-card h2 {
@@ -854,15 +854,15 @@ body.live-mode .btn-buy {
     font-weight: 600;
     letter-spacing: 0.1em;
     padding: 2px 6px;
-    background: var(--bull-dim);
-    color: var(--bull);
+    background: rgba(150, 150, 160, 0.2);
+    color: #b0b0b8;
     border-radius: var(--radius-sm);
     animation: pulse-ml 2s ease-in-out infinite;
 }
 
 .ml-badge.inactive {
-    background: var(--bear-dim);
-    color: var(--bear);
+    background: rgba(150, 150, 160, 0.1);
+    color: #808088;
     animation: none;
 }
 
@@ -892,15 +892,15 @@ body.live-mode .btn-buy {
 
 .btn-ml-trade {
     flex: 1;
-    background: linear-gradient(135deg, var(--bull) 0%, #16a34a 100%);
+    background: linear-gradient(135deg, #606878 0%, #505868 100%);
     color: white;
     border: none;
 }
 
 .btn-ml-trade:hover {
-    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    background: linear-gradient(135deg, #707888 0%, #606878 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 4px 12px rgba(100, 110, 130, 0.3);
 }
 
 .ml-signals {
@@ -929,8 +929,8 @@ body.live-mode .btn-buy {
 }
 
 .ml-signal-item.buy {
-    border-left-color: var(--bull);
-    background: linear-gradient(90deg, var(--bull-dim) 0%, var(--bg-elevated) 30%);
+    border-left-color: #8088a0;
+    background: linear-gradient(90deg, rgba(130, 140, 160, 0.15) 0%, var(--bg-elevated) 30%);
 }
 
 .ml-signal-item.sell {
@@ -959,8 +959,8 @@ body.live-mode .btn-buy {
 }
 
 .ml-signal-action.buy {
-    background: var(--bull-dim);
-    color: var(--bull);
+    background: rgba(130, 140, 160, 0.2);
+    color: #a0a8b8;
 }
 
 .ml-signal-action.sell {
