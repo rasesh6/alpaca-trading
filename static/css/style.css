@@ -12,8 +12,8 @@
     --bg-hover: #222328;
     --accent-gold: #c9a227;
     --accent-copper: #b87333;
-    --bull: #22c55e;
-    --bull-dim: rgba(34, 197, 94, 0.15);
+    --bull: #8a9aaa;
+    --bull-dim: rgba(138, 154, 170, 0.15);
     --bear: #ef4444;
     --bear-dim: rgba(239, 68, 68, 0.15);
     --text-primary: #fafafa;
@@ -100,7 +100,7 @@ body {
 
 .badge.auth-badge.authenticated {
     background: var(--bull-dim);
-    border-color: rgba(34, 197, 94, 0.3);
+    border-color: rgba(138, 154, 170, 0.3);
     color: var(--bull);
 }
 
@@ -266,7 +266,7 @@ select {
 }
 
 .btn-buy {
-    background: linear-gradient(135deg, var(--bull) 0%, #16a34a 100%);
+    background: linear-gradient(135deg, var(--bull) 0%, #6a7a8a 100%);
     color: white;
     width: 100%;
     padding: 10px;
