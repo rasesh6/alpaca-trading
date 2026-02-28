@@ -1413,6 +1413,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Refresh ML signals every 5 minutes
     setInterval(refreshMLSignals, 300000);
 
+    // Load model status and refresh every 5 minutes
+    refreshModelStatus();
+    setInterval(refreshModelStatus, 300000);
+
     // Enter key for quote
     document.getElementById('quote-symbol').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') getQuote();
@@ -1578,7 +1582,7 @@ function renderModelStatus(models) {
         if (model.last_trained) {
             const lastTrained = new Date(model.last_trained);
             const ageDays = Math.floor((new Date() - lastTrained) / (1000 * 60 * 60 * 24));
-            if (ageDays === 0) {
+            if (ageDays < 1) {
                 ageText = 'Today';
             } else if (ageDays === 1) {
                 ageText = '1 day ago';
@@ -1653,10 +1657,3 @@ async function retrainAllModels() {
         btn.textContent = '🎯 Retrain All';
     }
 }
-
-// Load model status on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Refresh model status periodically
-    refreshModelStatus();
-    setInterval(refreshModelStatus, 60000); // Every minute
-});
