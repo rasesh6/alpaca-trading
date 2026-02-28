@@ -1526,3 +1526,137 @@ async function executeMLAutoTrade() {
         btn.textContent = '⚡ Auto-Trade';
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Model Management Functions
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function refreshModelStatus() {
+    const statusDiv = document.getElementById('model-status');
+    statusDiv.innerHTML = '<div class="ml-loading">Loading model status...</div>';
+
+    try {
+        const response = await fetch('/api/ml/models/status');
+        const data = await response.json();
+
+        if (data.success && data.models) {
+            renderModelStatus(data.models);
+        } else {
+            statusDiv.innerHTML = '<div class="ml-error">Error loading model status</div>';
+        }
+    } catch (error) {
+        console.error('Error fetching model status:', error);
+        statusDiv.innerHTML = '<div class="ml-error">Connection error</div>';
+    }
+}
+
+function renderModelStatus(models) {
+    const statusDiv = document.getElementById('model-status');
+    let html = '';
+
+    const symbolOrder = ['SOXL', 'NVDA', 'SPY', 'QQQ'];
+
+    for (const symbol of symbolOrder) {
+        const model = models[symbol];
+        if (!model) {
+            html += `
+                <div class="model-item needs-retrain">
+                    <span class="model-symbol">${symbol}</span>
+                    <span class="model-info">Not trained</span>
+                    <span class="model-age stale">Needs training</span>
+                </div>
+            `;
+            continue;
+        }
+
+        const accuracy = model.accuracy ? (model.accuracy * 100).toFixed(1) + '%' : 'N/A';
+        const accuracyClass = model.accuracy >= 0.6 ? 'good' : model.accuracy >= 0.4 ? 'medium' : 'low';
+
+        // Calculate age
+        let ageText = 'N/A';
+        let ageClass = 'fresh';
+        if (model.last_trained) {
+            const lastTrained = new Date(model.last_trained);
+            const ageDays = Math.floor((new Date() - lastTrained) / (1000 * 60 * 60 * 24));
+            if (ageDays === 0) {
+                ageText = 'Today';
+            } else if (ageDays === 1) {
+                ageText = '1 day ago';
+            } else {
+                ageText = ageDays + ' days ago';
+            }
+            if (ageDays >= 7) {
+                ageClass = 'stale';
+            }
+        }
+
+        const itemClass = model.needs_retraining ? 'needs-retrain' : '';
+
+        html += `
+            <div class="model-item ${itemClass}">
+                <span class="model-symbol">${symbol}</span>
+                <span class="model-info">
+                    <span class="model-accuracy ${accuracyClass}">Acc: ${accuracy}</span>
+                </span>
+                <span class="model-age ${ageClass}">${ageText}</span>
+            </div>
+        `;
+    }
+
+    statusDiv.innerHTML = html || '<div class="placeholder-text">No models found</div>';
+}
+
+async function retrainAllModels() {
+    const confirmed = confirm(
+        '🎯 RETRAIN ALL MODELS\n\n' +
+        'This will retrain all ML models with the latest data.\n' +
+        'This may take 2-5 minutes.\n\n' +
+        'Proceed with retraining?'
+    );
+
+    if (!confirmed) return;
+
+    const btn = document.getElementById('btn-retrain');
+    btn.disabled = true;
+    btn.textContent = '⏳ Training...';
+
+    const statusDiv = document.getElementById('model-status');
+    statusDiv.innerHTML = '<div class="ml-loading retraining">Retraining models... This may take 2-5 minutes.</div>';
+
+    try {
+        const response = await fetch('/api/ml/models/retrain', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            const result = data.result;
+            const summary = result.summary || {};
+
+            alert(
+                `✅ Retraining Complete\n\n` +
+                `Successful: ${summary.successful || 0}\n` +
+                `Failed: ${summary.failed || 0}\n\n` +
+                `Models have been updated with latest data.`
+            );
+
+            // Refresh status
+            refreshModelStatus();
+        } else {
+            alert('❌ Retraining failed: ' + (data.error || 'Unknown error'));
+            refreshModelStatus();
+        }
+    } catch (error) {
+        console.error('Retraining error:', error);
+        alert('❌ Connection error during retraining');
+        refreshModelStatus();
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🎯 Retrain All';
+    }
+}
+
+// Load model status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh model status periodically
+    refreshModelStatus();
+    setInterval(refreshModelStatus, 60000); // Every minute
+});

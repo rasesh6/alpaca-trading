@@ -1095,3 +1095,118 @@ body.live-mode .btn-buy {
     background: var(--bear-dim);
     color: var(--bear);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Model Management Panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.model-mgmt-card {
+    border: 1px solid rgba(150, 150, 160, 0.2);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(150, 150, 160, 0.03) 100%);
+}
+
+.model-mgmt-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-controls {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.btn-model {
+    flex: 1;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
+}
+
+.btn-model:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-gold);
+    color: var(--text-primary);
+}
+
+.btn-retrain {
+    flex: 1;
+    background: linear-gradient(135deg, #6a5acd 0%, #5a4abd 100%);
+    color: white;
+    border: none;
+}
+
+.btn-retrain:hover {
+    background: linear-gradient(135deg, #7a6add 0%, #6a5acd 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(106, 90, 205, 0.3);
+}
+
+.btn-retrain:disabled {
+    background: var(--bg-elevated);
+    color: var(--text-tertiary);
+    transform: none;
+    box-shadow: none;
+}
+
+.model-status {
+    background: var(--bg-base);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.model-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+}
+
+.model-symbol {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.model-info {
+    display: flex;
+    gap: 12px;
+    font-size: 0.625rem;
+    color: var(--text-tertiary);
+}
+
+.model-accuracy {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.model-accuracy.good { color: var(--bull); }
+.model-accuracy.medium { color: var(--accent-gold); }
+.model-accuracy.low { color: var(--bear); }
+
+.model-age {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.model-age.stale { color: var(--bear); }
+.model-age.fresh { color: var(--text-tertiary); }
+
+.needs-retrain {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 2px solid var(--bear);
+}
+
+.retraining {
+    animation: pulse-retrain 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-retrain {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}

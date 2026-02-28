@@ -1625,6 +1625,133 @@ def ml_status():
         }), 500
 
 
+@app.route('/api/ml/models/status', methods=['GET'])
+def ml_models_status():
+    """Get model training status and performance metrics"""
+    try:
+        from model_manager import get_retraining_status
+        status = get_retraining_status()
+        return jsonify({
+            'success': True,
+            **status
+        })
+    except Exception as e:
+        logger.error(f"Model status check failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/api/ml/models/retrain', methods=['POST'])
+def ml_models_retrain():
+    """
+    Retrain models
+
+    Query params:
+    - symbol: Specific symbol to retrain (optional, defaults to all)
+    - days: Days of history to use (default: 500)
+    """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+    symbol = request.args.get('symbol', None)
+    days = int(request.args.get('days', 500))
+
+    if symbol:
+        symbol = symbol.upper()
+        logger.info(f"Manual retraining requested for {symbol}")
+    else:
+        logger.info("Manual retraining requested for all models")
+
+    def run_retraining():
+        try:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            try:
+                import nest_asyncio
+                nest_asyncio.apply()
+            except ImportError:
+                pass
+
+            from model_manager import ModelRetrainer
+            retrainer = ModelRetrainer()
+
+            if symbol:
+                return retrainer.retrain_model(symbol, days)
+            else:
+                return retrainer.retrain_all(days=days)
+        except Exception as e:
+            logger.error(f"Retraining error: {e}")
+            raise
+
+    try:
+        # Run retraining in thread pool with 5 minute timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_retraining)
+            result = future.result(timeout=300)  # 5 minute timeout
+
+        return jsonify({
+            'success': True,
+            'result': result,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except FuturesTimeoutError:
+        logger.error("Retraining timed out")
+        return jsonify({
+            'success': False,
+            'error': 'Retraining timed out (5 minute limit)',
+            'timestamp': datetime.now().isoformat()
+        }), 504
+    except Exception as e:
+        logger.error(f"Retraining failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/api/ml/models/history/<symbol>', methods=['GET'])
+def ml_model_history(symbol):
+    """Get training history for a specific model"""
+    try:
+        from model_manager import ModelMetrics
+        metrics = ModelMetrics()
+        info = metrics.get_model_info(symbol.upper())
+
+        if not info:
+            return jsonify({
+                'success': False,
+                'error': f'No model found for {symbol}',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+
+        # Load full history
+        all_metrics = metrics._load_metrics()
+        history = all_metrics.get(symbol.upper(), {}).get('history', [])
+
+        return jsonify({
+            'success': True,
+            'symbol': symbol.upper(),
+            'current': info,
+            'history': history,
+            'prediction_accuracy': metrics.get_prediction_accuracy(symbol.upper()),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Model history check failed: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
 # ==================== RUN ====================
 
 if __name__ == '__main__':

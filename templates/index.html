@@ -302,6 +302,18 @@
                     </div>
                 </div>
 
+                <!-- Model Management Panel -->
+                <div class="card model-mgmt-card">
+                    <h2>📊 Model Management</h2>
+                    <div class="model-controls">
+                        <button class="btn btn-model" onclick="refreshModelStatus()">🔄 Refresh Status</button>
+                        <button class="btn btn-retrain" onclick="retrainAllModels()" id="btn-retrain">🎯 Retrain All</button>
+                    </div>
+                    <div class="model-status" id="model-status">
+                        <div class="placeholder-text">Loading model status...</div>
+                    </div>
+                </div>
+
                 <!-- Positions -->
                 <div class="card flex-grow">
                     <h2>Positions</h2>
