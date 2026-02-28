@@ -7,6 +7,8 @@ Data sources (in order of preference):
 2. Alpaca (good data, but limited on basic plan)
 3. yfinance (free fallback)
 """
+import os
+import json
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -15,6 +17,28 @@ from ml_config import PAPER_API_KEY, PAPER_SECRET_KEY, PAPER_BASE_URL, TRAINING_
 from ml_config import MODELS_DIR, DATA_DIR
 from feature_engineering import FeatureEngineer
 from ensemble_model import EnsembleModel
+
+# Try to import IB data provider
+try:
+    from ib_data_provider import IBDataProviderFallback
+    IB_AVAILABLE = True
+except ImportError:
+    IB_AVAILABLE = False
+    print("Warning: ib_data_provider not available. Install ib_insync for IB data.")
+
+
+def load_best_params(symbol):
+    """Load best hyperparameters for a symbol if available"""
+    best_params_dir = os.path.join(os.path.dirname(__file__), 'best_params')
+    params_file = os.path.join(best_params_dir, f'{symbol}_params.json')
+    if os.path.exists(params_file):
+        try:
+            with open(params_file, 'r') as f:
+                data = json.load(f)
+                return data.get('best_params', {})
+        except Exception as e:
+            print(f"Warning: Could not load best params for {symbol}: {e}")
+    return None
 
 # Try to import IB data provider
 try:
@@ -40,12 +64,65 @@ class Trainer:
         else:
             self.api = None
         self.feature_engineer = FeatureEngineer()
-        self.model = EnsembleModel()
+
+        # Load best hyperparameters if available
+        best_params = load_best_params(symbol)
+        if best_params:
+            print(f"Using optimized hyperparameters for {symbol}")
+            self.model = EnsembleModel(config=self._build_config_from_params(best_params))
+        else:
+            self.model = EnsembleModel()
+
         self.df = None
         self.X_train = None
         self.X_test = None
         self.y_train = None
         self.y_test = None
+
+    def _build_config_from_params(self, params):
+        """Build ENSEMBLE_CONFIG from optimized parameters"""
+        from ml_config import ENSEMBLE_CONFIG
+        config = ENSEMBLE_CONFIG.copy()
+
+        # Map Optuna params to config
+        if 'rf_n_estimators' in params:
+            config['rf_n_estimators'] = params['rf_n_estimators']
+        if 'rf_max_depth' in params:
+            config['rf_max_depth'] = params['rf_max_depth']
+        if 'rf_min_samples_split' in params:
+            config['rf_min_samples_split'] = params['rf_min_samples_split']
+        if 'rf_min_samples_leaf' in params:
+            config['rf_min_samples_leaf'] = params['rf_min_samples_leaf']
+
+        if 'xgb_n_estimators' in params:
+            config['xgb_n_estimators'] = params['xgb_n_estimators']
+        if 'xgb_max_depth' in params:
+            config['xgb_max_depth'] = params['xgb_max_depth']
+        if 'xgb_learning_rate' in params:
+            config['xgb_learning_rate'] = params['xgb_learning_rate']
+        if 'xgb_subsample' in params:
+            config['xgb_subsample'] = params['xgb_subsample']
+        if 'xgb_colsample_bytree' in params:
+            config['xgb_colsample_bytree'] = params['xgb_colsample_bytree']
+
+        if 'lgb_n_estimators' in params:
+            config['lgb_n_estimators'] = params['lgb_n_estimators']
+        if 'lgb_max_depth' in params:
+            config['lgb_max_depth'] = params['lgb_max_depth']
+        if 'lgb_learning_rate' in params:
+            config['lgb_learning_rate'] = params['lgb_learning_rate']
+        if 'lgb_num_leaves' in params:
+            config['lgb_num_leaves'] = params['lgb_num_leaves']
+
+        # Ensemble weights
+        if 'weight_rf' in params:
+            config['rf_weight'] = params['weight_rf']
+        if 'weight_xgb' in params:
+            config['xgb_weight'] = params['weight_xgb']
+        if 'weight_rf' in params and 'weight_xgb' in params:
+            config['lgb_weight'] = 1.0 - params['weight_rf'] - params['weight_xgb']
+
+        return config
 
     def fetch_data(self, days=None):
         """Fetch historical data - tries IB first, then Alpaca, then yfinance"""
